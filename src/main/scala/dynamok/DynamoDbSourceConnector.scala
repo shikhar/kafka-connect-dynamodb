@@ -10,12 +10,16 @@ import org.apache.kafka.common.config.ConfigDef.{Importance, Type}
 import org.apache.kafka.common.utils.AppInfoParser
 import org.apache.kafka.connect.connector.Task
 import org.apache.kafka.connect.source.SourceConnector
+import org.apache.kafka.connect.util.ConnectorUtils
+import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConverters._
 
 class DynamoDbSourceConnector extends SourceConnector {
 
   import DynamoDbSourceConnector._
+
+  val log = LoggerFactory.getLogger(classOf[DynamoDbSourceConnector])
 
   var regions: Regions = _
   var tableDescription: TableDescription = _
@@ -24,37 +28,35 @@ class DynamoDbSourceConnector extends SourceConnector {
   override def taskClass(): Class[_ <: Task] = classOf[DynamoDbSourceTask]
 
   override def taskConfigs(maxTasks: Int): JList[JMap[String, String]] = {
-    val numShardsPerTask = math.max(shards.size / maxTasks, 1)
-
-    shards.asScala.grouped(numShardsPerTask).map {
+    ConnectorUtils.groupPartitions(shards, maxTasks).asScala.map {
       taskShards =>
         Map(
           ConfigKeys.Region -> regions.getName,
           ConfigKeys.Table -> tableDescription.getTableName,
-          ConfigKeys.Shards -> taskShards.map(_.getShardId).mkString(","),
+          ConfigKeys.Shards -> taskShards.asScala.map(_.getShardId).mkString(","),
           ConfigKeys.StreamArn -> tableDescription.getLatestStreamArn
         ).asJava
-    }.asJava
+    }.toList.asJava
   }
 
   override def start(props: JMap[String, String]): Unit = {
-    val region = Regions.fromName(props.get(ConfigKeys.Region))
-    val table = props.get(ConfigKeys.Table)
+    val config = ConnectorConfig(props)
 
     val client = new AmazonDynamoDBClient()
-    client.configureRegion(region)
+    client.configureRegion(config.region)
 
-    tableDescription = client.describeTable(table).getTable
-
+    tableDescription = client.describeTable(config.table).getTable
     if (!tableDescription.getStreamSpecification.isStreamEnabled) {
-      // TODO throw
-    }
-    if (StreamViewType.fromValue(tableDescription.getStreamSpecification.getStreamViewType) != StreamViewType.NEW_AND_OLD_IMAGES) {
-      // TODO throw
+      sys.error("The DynamoDB table does not have streams enabled")
     }
 
-    val streamsClient = new AmazonDynamoDBStreamsClient()
-    streamsClient.configureRegion(region)
+    val streamViewType = tableDescription.getStreamSpecification.getStreamViewType
+    if (!AcceptableStreamViewTypes.contains(streamViewType)) {
+      sys.error(s"""The DynamoDB table's stream view type needs to be one of ${AcceptableStreamViewTypes.mkString("{,", ",", "}")}, was: ${streamViewType}""")
+    }
+
+    val streamsClient: AmazonDynamoDBStreamsClient = new AmazonDynamoDBStreamsClient()
+    streamsClient.configureRegion(config.region)
 
     val describeStreamResult: DescribeStreamResult = streamsClient.describeStream(new DescribeStreamRequest().withStreamArn(tableDescription.getLatestStreamArn))
 
@@ -65,13 +67,18 @@ class DynamoDbSourceConnector extends SourceConnector {
   override def stop(): Unit = {
   }
 
-  override def config(): ConfigDef = ConfigDef
+  override def config(): ConfigDef = ConfigDefinition
 
   override def version(): String = AppInfoParser.getVersion
 
 }
 
 object DynamoDbSourceConnector {
+
+  val AcceptableStreamViewTypes = Seq(
+    StreamViewType.NEW_IMAGE.name(),
+    StreamViewType.NEW_AND_OLD_IMAGES.name()
+  )
 
   object ConfigKeys {
     val Region = "region"
@@ -80,8 +87,20 @@ object DynamoDbSourceConnector {
     val StreamArn = "stream_arn"
   }
 
-  val ConfigDef = new ConfigDef()
+  val ConfigDefinition = new ConfigDef()
     .define(ConfigKeys.Region, Type.STRING, Importance.HIGH, "AWS region.")
     .define(ConfigKeys.Table, Type.STRING, Importance.HIGH, "Source DynamoDB table.")
+
+  case class ConnectorConfig(props: JMap[String, String]) {
+
+    lazy val region: Regions = Regions.fromName(props.get(ConfigKeys.Region))
+
+    lazy val table: String = props.get(ConfigKeys.Table)
+
+    lazy val shards: Seq[String] = props.get(ConfigKeys.Shards).split(',').filterNot(_.isEmpty)
+
+    lazy val streamArn: String = props.get(ConfigKeys.StreamArn)
+
+  }
 
 }
