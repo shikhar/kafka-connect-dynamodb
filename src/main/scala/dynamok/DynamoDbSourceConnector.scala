@@ -24,6 +24,7 @@ class DynamoDbSourceConnector extends SourceConnector {
   var regions: Regions = _
   var tableDescription: TableDescription = _
   var shards: JList[Shard] = _
+  var destTopic: String = _
 
   override def taskClass(): Class[_ <: Task] = classOf[DynamoDbSourceTask]
 
@@ -34,7 +35,8 @@ class DynamoDbSourceConnector extends SourceConnector {
           ConfigKeys.Region -> regions.getName,
           ConfigKeys.Table -> tableDescription.getTableName,
           ConfigKeys.Shards -> taskShards.asScala.map(_.getShardId).mkString(","),
-          ConfigKeys.StreamArn -> tableDescription.getLatestStreamArn
+          ConfigKeys.StreamArn -> tableDescription.getLatestStreamArn,
+          ConfigKeys.Topic -> destTopic
         ).asJava
     }.toList.asJava
   }
@@ -58,10 +60,13 @@ class DynamoDbSourceConnector extends SourceConnector {
     val streamsClient: AmazonDynamoDBStreamsClient = new AmazonDynamoDBStreamsClient()
     streamsClient.configureRegion(config.region)
 
-    val describeStreamResult: DescribeStreamResult = streamsClient.describeStream(new DescribeStreamRequest().withStreamArn(tableDescription.getLatestStreamArn))
+    val describeStreamResult: DescribeStreamResult =
+      streamsClient.describeStream(new DescribeStreamRequest().withStreamArn(tableDescription.getLatestStreamArn))
 
     val streamDescription: StreamDescription = describeStreamResult.getStreamDescription
     shards = streamDescription.getShards
+
+    destTopic = config.topic
   }
 
   override def stop(): Unit = {
@@ -85,11 +90,13 @@ object DynamoDbSourceConnector {
     val Table = "table"
     val Shards = "shards"
     val StreamArn = "stream_arn"
+    val Topic = "topic"
   }
 
   val ConfigDefinition = new ConfigDef()
     .define(ConfigKeys.Region, Type.STRING, Importance.HIGH, "AWS region.")
     .define(ConfigKeys.Table, Type.STRING, Importance.HIGH, "Source DynamoDB table.")
+    .define(ConfigKeys.Topic, Type.STRING, Importance.HIGH, "Destination Kafka topic.")
 
   case class ConnectorConfig(props: JMap[String, String]) {
 
@@ -100,6 +107,8 @@ object DynamoDbSourceConnector {
     lazy val shards: Seq[String] = props.get(ConfigKeys.Shards).split(',').filterNot(_.isEmpty)
 
     lazy val streamArn: String = props.get(ConfigKeys.StreamArn)
+
+    lazy val topic: String = props.get(ConfigKeys.Topic)
 
   }
 
