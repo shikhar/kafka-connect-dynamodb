@@ -18,28 +18,26 @@ class DynamoDbSourceTask extends SourceTask {
 
   val log = LoggerFactory.getLogger(classOf[DynamoDbSourceTask])
 
-  var streamsClient: AmazonDynamoDBStreamsClient = _
-  var shards: mutable.ArrayBuffer[String] = mutable.ArrayBuffer()
+  val streamsClient: AmazonDynamoDBStreamsClient = new AmazonDynamoDBStreamsClient()
+
+  val shards: mutable.ArrayBuffer[String] = mutable.ArrayBuffer()
+
   var streamArn: String = _
+
   var topic: String = _
 
   val sourcePartitions: mutable.Map[String, JMap[String, String]] = mutable.Map()
+
   val shardIterators: mutable.Map[String, String] = mutable.Map()
 
   var currentShardIdx: Int = 0
 
   override def start(props: JMap[String, String]): Unit = {
     val config = ConnectorConfig(props)
-
-    streamsClient = new AmazonDynamoDBStreamsClient()
     streamsClient.configureRegion(config.region)
-
     shards ++= config.shards
-
     streamArn = config.streamArn
-
     topic = config.topic
-
     log.info(s"Initialized for shard IDs ${shards.mkString("[", ", ", "]")}")
   }
 
@@ -59,7 +57,6 @@ class DynamoDbSourceTask extends SourceTask {
         log.info(s"Shard ID ${shardId} has been closed, it will no longer be polled")
         shardIterators -= shardId
         shards -= shardId
-
     }
 
     if (rsp.getRecords.isEmpty) {
@@ -85,7 +82,7 @@ class DynamoDbSourceTask extends SourceTask {
 
   private def shardIterator(shardId: String): String = {
     shardIterators.getOrElseUpdate(shardId, {
-      val req = getShardIteratorRequest(shardId, streamArn, storedSequenceNumber(sourcePartitions(shardId)))
+      val req = getShardIteratorRequest(shardId, streamArn, storedSequenceNumber(sourcePartition(shardId)))
       streamsClient.getShardIterator(req).getShardIterator
     })
   }
@@ -109,7 +106,7 @@ class DynamoDbSourceTask extends SourceTask {
     if (numShards == 0) {
       sys.error("No remaining source shards")
     }
-    val shardId = shards(currentShardIdx)
+    val shardId = shards(currentShardIdx % numShards)
     currentShardIdx = (currentShardIdx + 1) % numShards
     shardId
   }

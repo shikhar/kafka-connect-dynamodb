@@ -21,7 +21,7 @@ class DynamoDbSourceConnector extends SourceConnector {
 
   val log = LoggerFactory.getLogger(classOf[DynamoDbSourceConnector])
 
-  var regions: Regions = _
+  var region: Regions = _
   var tableDescription: TableDescription = _
   var shards: JList[Shard] = _
   var destTopic: String = _
@@ -32,7 +32,7 @@ class DynamoDbSourceConnector extends SourceConnector {
     ConnectorUtils.groupPartitions(shards, maxTasks).asScala.map {
       taskShards =>
         Map(
-          ConfigKeys.Region -> regions.getName,
+          ConfigKeys.Region -> region.getName,
           ConfigKeys.Table -> tableDescription.getTableName,
           ConfigKeys.Shards -> taskShards.asScala.map(_.getShardId).mkString(","),
           ConfigKeys.StreamArn -> tableDescription.getLatestStreamArn,
@@ -57,8 +57,10 @@ class DynamoDbSourceConnector extends SourceConnector {
       sys.error(s"""The DynamoDB table's stream view type needs to be one of ${AcceptableStreamViewTypes.mkString("{,", ",", "}")}, was: ${streamViewType}""")
     }
 
+    region = config.region
+
     val streamsClient: AmazonDynamoDBStreamsClient = new AmazonDynamoDBStreamsClient()
-    streamsClient.configureRegion(config.region)
+    streamsClient.configureRegion(region)
 
     val describeStreamResult: DescribeStreamResult =
       streamsClient.describeStream(new DescribeStreamRequest().withStreamArn(tableDescription.getLatestStreamArn))
