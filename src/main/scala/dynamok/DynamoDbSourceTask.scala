@@ -42,11 +42,17 @@ class DynamoDbSourceTask extends SourceTask {
   }
 
   override def poll(): JList[SourceRecord] = {
-    val shardId = nextShard()
+    // TODO rate limiting?
+
+    if (shards.isEmpty) {
+      sys.error("No remaining source shards")
+    }
+
+    val shardId = shards(currentShardIdx)
 
     val req = new GetRecordsRequest()
     req.setShardIterator(shardIterator(shardId))
-    req.setLimit(100)
+    req.setLimit(100) // TODO configurable
 
     val rsp: GetRecordsResult = streamsClient.getRecords(req)
 
@@ -58,6 +64,8 @@ class DynamoDbSourceTask extends SourceTask {
         shardIterators -= shardId
         shards -= shardId
     }
+
+    currentShardIdx = (currentShardIdx + 1) % shards.length
 
     if (rsp.getRecords.isEmpty) {
       null
@@ -99,16 +107,6 @@ class DynamoDbSourceTask extends SourceTask {
 
   private def fromSourceOffsetMap(offset: JMap[String, _]): Option[String] = {
     Option(offset.get("seqnum")).map(_.toString)
-  }
-
-  private def nextShard(): String = {
-    val numShards = shards.length
-    if (numShards == 0) {
-      sys.error("No remaining source shards")
-    }
-    val shardId = shards(currentShardIdx % numShards)
-    currentShardIdx = (currentShardIdx + 1) % numShards
-    shardId
   }
 
   private def getShardIteratorRequest(shardId: String, streamArn: String, seqNum: Option[String]): GetShardIteratorRequest = {
