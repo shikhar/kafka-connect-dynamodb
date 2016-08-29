@@ -38,7 +38,7 @@ public enum RecordMapper {
     }
 
     public static Map<String, Struct> toConnect(Map<String, AttributeValue> attributes) {
-        Map<String, Struct> connectAttributes = new HashMap<>();
+        Map<String, Struct> connectAttributes = new HashMap<>(attributes.size());
         for (Map.Entry<String, AttributeValue> attribute : attributes.entrySet()) {
             final String attributeName = attribute.getKey();
             final AttributeValue attributeValue = attribute.getValue();
