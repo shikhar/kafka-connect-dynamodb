@@ -33,7 +33,7 @@ class ConnectorConfig extends AbstractConfig {
             .define(Keys.TABLES_BLACKLIST, ConfigDef.Type.STRING, null,
                     ConfigDef.Importance.MEDIUM, "Blacklist for DynamoDB tables to source from.")
             .define(Keys.TOPIC_FORMAT, ConfigDef.Type.STRING, "${table}",
-                    ConfigDef.Importance.HIGH, "Format string for destination Kafka topic, use ``${table}` as placeholder for source table name.");
+                    ConfigDef.Importance.HIGH, "Format string for destination Kafka topic, use ``${table}`` as placeholder for source table name.");
 
     final Regions region;
     final String topicFormat;

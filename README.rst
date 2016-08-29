@@ -20,7 +20,7 @@ Configuration options
   * Importance: high
 
 ``topic.format``
-  Format string for destination Kafka topic, use ``${table}` as placeholder for source table name.
+  Format string for destination Kafka topic, use ``${table}`` as placeholder for source table name.
 
   * Type: string
   * Default: "${table}"
