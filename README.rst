@@ -1,7 +1,19 @@
 **kafka-connect-dynamodb** is a `Kafka Connector <http://kafka.apache.org/documentation.html#connect>`_ for loading data from and to Amazon DynamoDB.
 
+It is implemented using the AWS Java SDK for DynamoDB.
+For authentication, the `DefaultAWSCredentialsProviderChain <http://docs.aws.amazon.com/java-sdk/latest/developer-guide/credentials.html#id6>`_ is used.
+
 Source Connector
 ================
+
+Example configuration
+---------------------
+
+This will attempt to ingest all DynamoDB tables in the specified region, to Kafka topics with the same name as the source table::
+
+    name=mytest
+    connector.class=dynamok.source.DynamoDbSourceConnector
+    region=us-west-2
 
 Limitations
 -----------
