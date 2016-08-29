@@ -1,7 +1,6 @@
 package dynamok.source;
 
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
-import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
