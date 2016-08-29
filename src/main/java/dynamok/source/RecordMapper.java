@@ -11,7 +11,7 @@ import java.util.Map;
 public enum RecordMapper {
     ;
 
-    private static final Schema ATTRIBUTEVALUE_SCHEMA =
+    private static final Schema AV_SCHEMA =
             SchemaBuilder.struct()
                     .name("DynamoDB.AttributeValue")
                     .field("S", Schema.OPTIONAL_STRING_SCHEMA)
@@ -22,13 +22,13 @@ public enum RecordMapper {
                     .field("BS", SchemaBuilder.array(Schema.BYTES_SCHEMA).optional().build())
                     .field("NULL", Schema.OPTIONAL_BOOLEAN_SCHEMA)
                     .field("BOOL", Schema.OPTIONAL_BOOLEAN_SCHEMA)
-                    //      .field("L", ???) -- FIXME https://issues.apache.org/jira/browse/KAFKA-3910
-                    //      .field("M", ???) -- FIXME https://issues.apache.org/jira/browse/KAFKA-3910
+                    //      .field("L", "DynamoDB.AttributeValue") -- FIXME https://issues.apache.org/jira/browse/KAFKA-3910
+                    //      .field("M", "DynamoDB.AttributeValue") -- FIXME https://issues.apache.org/jira/browse/KAFKA-3910
                     .version(1)
                     .build();
 
     private static final Schema DYNAMODB_ATTRIBUTES_SCHEMA =
-            SchemaBuilder.map(Schema.STRING_SCHEMA, ATTRIBUTEVALUE_SCHEMA)
+            SchemaBuilder.map(Schema.STRING_SCHEMA, AV_SCHEMA)
                     .name("DynamoDB.Attributes")
                     .version(1)
                     .build();
@@ -39,10 +39,10 @@ public enum RecordMapper {
 
     public static Map<String, Struct> toConnect(Map<String, AttributeValue> attributes) {
         Map<String, Struct> connectAttributes = new HashMap<>();
-        for (Map.Entry<String, AttributeValue> attribute: attributes.entrySet()) {
+        for (Map.Entry<String, AttributeValue> attribute : attributes.entrySet()) {
             final String attributeName = attribute.getKey();
             final AttributeValue attributeValue = attribute.getValue();
-            final Struct attributeValueStruct = new Struct(ATTRIBUTEVALUE_SCHEMA);
+            final Struct attributeValueStruct = new Struct(AV_SCHEMA);
             if (attributeValue.getS() != null) {
                 attributeValueStruct.put("S", attributeValue.getS());
             } else if (attributeValue.getN() != null) {
