@@ -6,7 +6,7 @@ Source Connector
 Limitations
 -----------
 
-DynamoDB records containing nested structures like heterogeneous lists (``L``) or maps (``M``) are currently not supported, these fields will be dropped.
+DynamoDB records containing nested structures like heterogeneous lists (``L``) or maps (``M``) are not fully supported, these fields will be dropped.
 It will be possible to add support for them with the implementation of `KAFKA-3910 <https://issues.apache.org/jira/browse/KAFKA-3910>`_.
 
 Configuration options
