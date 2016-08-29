@@ -50,4 +50,8 @@ class ConnectorConfig extends AbstractConfig {
         topicFormat = getString(Keys.TOPIC_FORMAT);
     }
 
+    public static void main(String... args) {
+        System.out.println(CONFIG_DEF.toRst());
+    }
+
 }
