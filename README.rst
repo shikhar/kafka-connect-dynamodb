@@ -151,7 +151,7 @@ Ingest all DynamoDB tables in the specified region, to Kafka topics with the sam
 Limitations
 -----------
 
-DynamoDB records containing nested structures like heterogeneous lists (``L``) or maps (``M``) are not fully supported, these fields will be dropped.
+DynamoDB records containing heterogeneous lists (``L``) or maps (``M``) are not currently supported, these fields will be silently dropped.
 It will be possible to add support for them with the implementation of `KAFKA-3910 <https://issues.apache.org/jira/browse/KAFKA-3910>`_.
 
 Configuration options
