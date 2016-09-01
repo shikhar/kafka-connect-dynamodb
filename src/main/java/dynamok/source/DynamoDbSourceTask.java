@@ -6,6 +6,7 @@ import com.amazonaws.services.dynamodbv2.model.GetRecordsResult;
 import com.amazonaws.services.dynamodbv2.model.GetShardIteratorRequest;
 import com.amazonaws.services.dynamodbv2.model.ShardIteratorType;
 import com.amazonaws.services.dynamodbv2.model.StreamRecord;
+import dynamok.Version;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTask;
@@ -141,7 +142,7 @@ public class DynamoDbSourceTask extends SourceTask {
 
     @Override
     public String version() {
-        return null;
+        return Version.get();
     }
 
 }
