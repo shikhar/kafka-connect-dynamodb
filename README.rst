@@ -29,45 +29,46 @@ so we can ensure being able to hoist the converted value as a DynamoDB record.
 Schema present
 ^^^^^^^^^^^^^^
 
-=========================================================   ===========
-Connect Schema.Type                                         DynamoDB
----------------------------------------------------------   -----------
-null                                                        Null
-INT8, INT16, INT32, INT64, FLOAT32, FLOAT64, Decimal        Number
-BOOL                                                        Boolean
-BYTES                                                       Binary
-STRING                                                      String
-ARRAY                                                       List
-MAP [1], STRUCT                                             Map
-=========================================================   ===========
+================================================================================  =============
+**Connect Schema Type**                                                           **DynamoDB**
+--------------------------------------------------------------------------------  -------------
+``null``                                                                          ``Null``
+``INT8``, ``INT16``, ``INT32``, ``INT64``, ``FLOAT32``, ``FLOAT64``, ``Decimal``  ``Number``
+``BOOL``                                                                          ``Boolean``
+``BYTES``                                                                         ``Binary``
+``STRING``                                                                        ``String``
+``ARRAY``                                                                         ``List``
+``MAP`` [#]_, ``STRUCT``                                                          ``Map``
+================================================================================  =============
 
-[1] Map keys must be primitive types, and cannot be optional.
+.. [#] Map keys must be primitive types, and cannot be optional.
 
 Schemaless
 ^^^^^^^^^^
 
-======================================================================================= ============
-Java                                                                                    DynamoDB
---------------------------------------------------------------------------------------- ------------
-null                                                                                    Null
-Number (i.e. Byte, Short, Integer, Long, Float, Double, BigInteger, BigDecimal)         Number
-Boolean                                                                                 Boolean
-byte[], ByteBuffer                                                                      Binary
-String                                                                                  String
-List                                                                                    List
-Empty set [1]                                                                           Null
-Set<String>                                                                             String Set
-Set<Number>                                                                             Number Set
-Set<byte[]>, Set<ByteBuffer>                                                            Binary Set
-Map [2]                                                                                 Map
-======================================================================================= ============
+======================================================================================= ==============
+**Java**                                                                                **DynamoDB**
+--------------------------------------------------------------------------------------- --------------
+``null``                                                                                ``Null``
+``Number`` [#]_                                                                         ``Number``
+``Boolean``                                                                             ``Boolean``
+``byte[]``, ``ByteBuffer``                                                              ``Binary``
+``String``                                                                              ``String``
+``List``                                                                                ``List``
+Empty ``Set`` [#]_                                                                      ``Null``
+``Set<String>``                                                                         ``String Set``
+``Set<Number>``                                                                         ``Number Set``
+``Set<byte[]>``, ``Set<ByteBuffer>``                                                    ``Binary Set``
+``Map`` [#]_                                                                            ``Map``
+======================================================================================= ==============
 
+Any other datatype will result in the connector to fail.
 
-Any other data type will result in the connector to fail.
+.. [#] i.e. ``Byte``, ``Short``, ``Integer``, ``Long``, ``Float``, ``Double``, ``BigInteger``, ``BigDecimal``
 
-[1] It is not possible to determine the element type of an empty set.
+.. [#] It is not possible to determine the element type of an empty set.
 
-[2] Map keys must be primitive types, and cannot be optional.
+.. [#] Map keys must be primitive types, and cannot be optional.
 
 Configuration options
 ---------------------
@@ -107,20 +108,6 @@ Configuration options
   * Default: false
   * Importance: medium
 
-``max.retries``
-  The maximum number of times to retry on errors before failing the task.
-
-  * Type: int
-  * Default: 10
-  * Importance: medium
-
-``retry.backoff.ms``
-  The time in milliseconds to wait following an error before a retry attempt is made.
-
-  * Type: int
-  * Default: 3000
-  * Importance: medium
-
 ``top.key.attribute``
   DynamoDB attribute name to use for the record key. Leave empty if no top-level envelope attribute is desired, such as w.
 
@@ -135,6 +122,19 @@ Configuration options
   * Default: ""
   * Importance: medium
 
+``max.retries``
+  The maximum number of times to retry on errors before failing the task.
+
+  * Type: int
+  * Default: 10
+  * Importance: medium
+
+``retry.backoff.ms``
+  The time in milliseconds to wait following an error before a retry attempt is made.
+
+  * Type: int
+  * Default: 3000
+  * Importance: medium
 
 Source Connector
 ================
@@ -148,8 +148,13 @@ Ingest all DynamoDB tables in the specified region, to Kafka topics with the sam
     connector.class=dynamok.source.DynamoDbSourceConnector
     region=us-west-2
 
+Record conversion
+-----------------
+
+*TODO describe conversion scheme*
+
 Limitations
------------
+^^^^^^^^^^^
 
 DynamoDB records containing heterogeneous lists (``L``) or maps (``M``) are not currently supported, these fields will be silently dropped.
 It will be possible to add support for them with the implementation of `KAFKA-3910 <https://issues.apache.org/jira/browse/KAFKA-3910>`_.
@@ -171,6 +176,12 @@ Configuration options
   * Default: "${table}"
   * Importance: high
 
+``tables.whitelist``
+  Whitelist for DynamoDB tables to source from.
+
+  * Type: string
+  * Importance: medium
+
 ``tables.blacklist``
   Blacklist for DynamoDB tables to source from.
 
@@ -179,12 +190,6 @@ Configuration options
 
 ``tables.regex``
   Prefix for DynamoDB tables to source from.
-
-  * Type: string
-  * Importance: medium
-
-``tables.whitelist``
-  Whitelist for DynamoDB tables to source from.
 
   * Type: string
   * Importance: medium
