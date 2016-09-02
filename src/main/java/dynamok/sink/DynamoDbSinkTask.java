@@ -125,7 +125,10 @@ public class DynamoDbSinkTask extends SinkTask {
 
     @Override
     public void stop() {
-
+        if (client != null) {
+            client.shutdown();
+            client = null;
+        }
     }
 
     @Override

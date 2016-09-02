@@ -137,7 +137,10 @@ public class DynamoDbSourceTask extends SourceTask {
 
     @Override
     public void stop() {
-        streamsClient.shutdown();
+        if (streamsClient != null) {
+            streamsClient.shutdown();
+            streamsClient = null;
+        }
     }
 
     @Override
