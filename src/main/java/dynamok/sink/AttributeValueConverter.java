@@ -22,14 +22,19 @@ public class AttributeValueConverter {
 
     public static AttributeValue toAttributeValue(Schema schema, Object value) {
         if (value == null) {
-            if (!schema.isOptional()) {
-                throw new ConnectException("null value for non-optional schema");
+            if (schema.defaultValue() != null) {
+                value = schema.defaultValue();
+            } else if (schema.isOptional()) {
+                return NULL_VALUE;
+            } else {
+                throw new ConnectException("null value for non-optional schema with no default value");
             }
-            return NULL_VALUE;
         }
+
         if (schema.name() != null && schema.name().equals(Decimal.LOGICAL_NAME)) {
             return new AttributeValue().withN(value.toString());
         }
+
         switch (schema.type()) {
             case INT8:
             case INT16:
