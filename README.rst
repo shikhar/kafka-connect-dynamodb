@@ -32,7 +32,6 @@ Schema present
 ================================================================================  =============
 **Connect Schema Type**                                                           **DynamoDB**
 --------------------------------------------------------------------------------  -------------
-``null``                                                                          ``Null``
 ``INT8``, ``INT16``, ``INT32``, ``INT64``, ``FLOAT32``, ``FLOAT64``, ``Decimal``  ``Number``
 ``BOOL``                                                                          ``Boolean``
 ``BYTES``                                                                         ``Binary``
@@ -42,6 +41,8 @@ Schema present
 ================================================================================  =============
 
 .. [#] Map keys must be primitive types, and cannot be optional.
+
+``null`` values for optional schemas are translated to the ``Null` type.
 
 Schemaless
 ^^^^^^^^^^
