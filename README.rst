@@ -42,7 +42,7 @@ Schema present
 
 .. [#] Map keys must be primitive types, and cannot be optional.
 
-``null`` values for optional schemas are translated to the ``Null` type.
+``null`` values for optional schemas are translated to the ``Null`` type.
 
 Schemaless
 ^^^^^^^^^^
