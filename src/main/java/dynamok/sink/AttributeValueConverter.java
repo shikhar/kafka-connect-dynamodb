@@ -21,7 +21,7 @@ import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.errors.ConnectException;
+import org.apache.kafka.connect.errors.DataException;
 
 import java.nio.ByteBuffer;
 import java.util.Base64;
@@ -43,7 +43,7 @@ public class AttributeValueConverter {
             } else if (schema.isOptional()) {
                 return NULL_VALUE;
             } else {
-                throw new ConnectException("null value for non-optional schema with no default value");
+                throw new DataException("null value for non-optional schema with no default value");
             }
         }
 
@@ -74,16 +74,16 @@ public class AttributeValueConverter {
             }
             case MAP: {
                 if (schema.keySchema().isOptional()) {
-                    throw new ConnectException("MAP key schema must not be optional");
+                    throw new DataException("MAP key schema must not be optional");
                 }
                 if (!schema.keySchema().type().isPrimitive()) {
-                    throw new ConnectException("MAP key schema must be of primitive type");
+                    throw new DataException("MAP key schema must be of primitive type");
                 }
                 final Map<?, ?> sourceMap = (Map) value;
                 final Map<String, AttributeValue> attributesMap = new HashMap<>(sourceMap.size());
                 for (Map.Entry<?, ?> e : sourceMap.entrySet()) {
                     attributesMap.put(
-                            primitiveAsString(e.getKey()),
+                            primitiveAsString(nullFallback(e.getKey(), schema.keySchema().defaultValue())),
                             toAttributeValue(schema.valueSchema(), e.getValue())
                     );
                 }
@@ -99,7 +99,7 @@ public class AttributeValueConverter {
                 return new AttributeValue().withM(attributesMap);
             }
             default:
-                throw new ConnectException("Unknown Schema.Type: " + schema.type());
+                throw new DataException("Unknown Schema.Type: " + schema.type());
         }
     }
 
@@ -142,7 +142,7 @@ public class AttributeValueConverter {
             if (firstItem instanceof byte[] || firstItem instanceof ByteBuffer) {
                 return new AttributeValue().withBS(set.stream().map(AttributeValueConverter::toByteBuffer).collect(Collectors.toSet()));
             }
-            throw new ConnectException("Unsupported Set element type: " + firstItem.getClass());
+            throw new DataException("Unsupported Set element type: " + firstItem.getClass());
         }
         if (value instanceof Map) {
             final Map<?, ?> sourceMap = (Map) value;
@@ -155,7 +155,11 @@ public class AttributeValueConverter {
             }
             return new AttributeValue().withM(attributesMap);
         }
-        throw new ConnectException("Unsupported value type: " + value.getClass());
+        throw new DataException("Unsupported value type: " + value.getClass());
+    }
+
+    private static Object nullFallback(Object x, Object fallback) {
+        return x != null ? x : fallback;
     }
 
     private static String primitiveAsString(Object value) {
@@ -167,7 +171,7 @@ public class AttributeValueConverter {
         } else if (value instanceof ByteBuffer) {
             return Base64.getEncoder().encode((ByteBuffer) value).asCharBuffer().toString();
         }
-        throw new ConnectException("Not a primitive: " + value.getClass());
+        throw new DataException("Not a primitive: " + value.getClass());
     }
 
     private static ByteBuffer toByteBuffer(Object bytesValue) {
@@ -176,7 +180,7 @@ public class AttributeValueConverter {
         } else if (bytesValue instanceof ByteBuffer) {
             return ((ByteBuffer) bytesValue);
         } else {
-            throw new ConnectException("Invalid bytes value of type: " + bytesValue.getClass());
+            throw new DataException("Invalid bytes value of type: " + bytesValue.getClass());
         }
     }
 

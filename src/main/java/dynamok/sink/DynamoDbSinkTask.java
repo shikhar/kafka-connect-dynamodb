@@ -28,6 +28,7 @@ import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.errors.ConnectException;
+import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.errors.RetriableException;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.apache.kafka.connect.sink.SinkTask;
@@ -91,7 +92,11 @@ public class DynamoDbSinkTask extends SinkTask {
             if (!config.ignoreRecordKey) {
                 insert(ValueSource.RECORD_KEY, record.keySchema(), record.key(), put);
             }
-            maybeInsertKafkaCoordinates(record, put);
+            if (config.kafkaCoordinateNames != null) {
+                put.addItemEntry(config.kafkaCoordinateNames.topic, new AttributeValue().withS(record.topic()));
+                put.addItemEntry(config.kafkaCoordinateNames.partition, new AttributeValue().withN(String.valueOf(record.kafkaPartition())));
+                put.addItemEntry(config.kafkaCoordinateNames.offset, new AttributeValue().withN(String.valueOf(record.kafkaOffset())));
+            }
             writes.add(new WriteRequest(put));
         }
         try {
@@ -113,10 +118,16 @@ public class DynamoDbSinkTask extends SinkTask {
     }
 
     private void insert(ValueSource valueSource, Schema schema, Object value, PutRequest put) {
-        final AttributeValue attributeValue =
-                schema == null
-                        ? AttributeValueConverter.toAttributeValueSchemaless(value)
-                        : AttributeValueConverter.toAttributeValue(schema, value);
+        final AttributeValue attributeValue;
+        try {
+            attributeValue = schema == null
+                    ? AttributeValueConverter.toAttributeValueSchemaless(value)
+                    : AttributeValueConverter.toAttributeValue(schema, value);
+        } catch (DataException e) {
+            log.error("Failed to convert record with schema={} value={}", schema, value, e);
+            throw e;
+        }
+
         final String topAttributeName = valueSource.topAttributeName(config);
         if (!topAttributeName.isEmpty()) {
             put.addItemEntry(topAttributeName, attributeValue);
@@ -124,14 +135,6 @@ public class DynamoDbSinkTask extends SinkTask {
             put.setItem(attributeValue.getM());
         } else {
             throw new ConnectException("No top attribute name configured for " + valueSource + ", and it could not be converted to Map: " + attributeValue);
-        }
-    }
-
-    private void maybeInsertKafkaCoordinates(SinkRecord record, PutRequest put) {
-        if (config.kafkaCoordinateNames != null) {
-            put.addItemEntry(config.kafkaCoordinateNames.topic, new AttributeValue().withS(record.topic()));
-            put.addItemEntry(config.kafkaCoordinateNames.partition, new AttributeValue().withN(String.valueOf(record.kafkaPartition())));
-            put.addItemEntry(config.kafkaCoordinateNames.offset, new AttributeValue().withN(String.valueOf(record.kafkaOffset())));
         }
     }
 
