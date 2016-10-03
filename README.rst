@@ -110,7 +110,7 @@ Configuration options
   * Importance: medium
 
 ``top.key.attribute``
-  DynamoDB attribute name to use for the record key. Leave empty if no top-level envelope attribute is desired, such as w.
+  DynamoDB attribute name to use for the record key. Leave empty if no top-level envelope attribute is desired.
 
   * Type: string
   * Default: ""

@@ -61,7 +61,7 @@ class ConnectorConfig extends AbstractConfig {
                     ConfigDef.Importance.MEDIUM, "Whether to ignore Kafka record value in preparing the DynamoDB record.")
             .define(Keys.TOP_KEY_ATTRIBUTE, ConfigDef.Type.STRING, "",
                     ConfigDef.Importance.MEDIUM, "DynamoDB attribute name to use for the record key. " +
-                            "Leave empty if no top-level envelope attribute is desired, such as w.")
+                            "Leave empty if no top-level envelope attribute is desired.")
             .define(Keys.TOP_VALUE_ATTRIBUTE, ConfigDef.Type.STRING, "",
                     ConfigDef.Importance.MEDIUM, "DynamoDB attribute name to use for the record value. " +
                             "Leave empty if no top-level envelope attribute is desired.")
