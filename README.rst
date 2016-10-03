@@ -189,7 +189,7 @@ Configuration options
   * Type: string
   * Importance: medium
 
-``tables.regex``
+``tables.prefix``
   Prefix for DynamoDB tables to source from.
 
   * Type: string

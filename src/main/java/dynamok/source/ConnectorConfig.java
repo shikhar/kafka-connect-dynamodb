@@ -30,7 +30,7 @@ class ConnectorConfig extends AbstractConfig {
     private enum Keys {
         ;
         static final String REGION = "region";
-        static final String TABLES_PREFIX = "tables.regex";
+        static final String TABLES_PREFIX = "tables.prefix";
         static final String TABLES_WHITELIST = "tables.whitelist";
         static final String TABLES_BLACKLIST = "tables.blacklist";
         static final String TOPIC_FORMAT = "topic.format";
