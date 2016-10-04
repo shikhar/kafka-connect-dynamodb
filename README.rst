@@ -3,6 +3,15 @@
 It is implemented using the AWS Java SDK for DynamoDB.
 For authentication, the `DefaultAWSCredentialsProviderChain <http://docs.aws.amazon.com/java-sdk/latest/developer-guide/credentials.html#id6>`_ is used.
 
+Building
+--------
+
+Run::
+
+    $ mvn clean package
+
+Then you will find this connector and required JARs it depends upon in ``target/kafka-connect-dynamodb-0.1.0-SNAPSHOT-development/share/java/kafka-connect-dynamodb/``.
+
 Sink Connector
 ==============
 
