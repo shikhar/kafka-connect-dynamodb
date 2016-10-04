@@ -4,7 +4,7 @@ It is implemented using the AWS Java SDK for DynamoDB.
 For authentication, the `DefaultAWSCredentialsProviderChain <http://docs.aws.amazon.com/java-sdk/latest/developer-guide/credentials.html#id6>`_ is used.
 
 Building
---------
+========
 
 Run::
 
