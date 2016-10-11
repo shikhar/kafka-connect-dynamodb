@@ -189,13 +189,13 @@ Configuration options
 ``tables.whitelist``
   Whitelist for DynamoDB tables to source from.
 
-  * Type: string
+  * Type: list
   * Importance: medium
 
 ``tables.blacklist``
   Blacklist for DynamoDB tables to source from.
 
-  * Type: string
+  * Type: list
   * Importance: medium
 
 ``tables.prefix``

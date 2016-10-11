@@ -44,9 +44,9 @@ class ConnectorConfig extends AbstractConfig {
             }, ConfigDef.Importance.HIGH, "AWS region for the source DynamoDB.")
             .define(Keys.TABLES_PREFIX, ConfigDef.Type.STRING, null,
                     ConfigDef.Importance.MEDIUM, "Prefix for DynamoDB tables to source from.")
-            .define(Keys.TABLES_WHITELIST, ConfigDef.Type.STRING, null,
+            .define(Keys.TABLES_WHITELIST, ConfigDef.Type.LIST, null,
                     ConfigDef.Importance.MEDIUM, "Whitelist for DynamoDB tables to source from.")
-            .define(Keys.TABLES_BLACKLIST, ConfigDef.Type.STRING, null,
+            .define(Keys.TABLES_BLACKLIST, ConfigDef.Type.LIST, null,
                     ConfigDef.Importance.MEDIUM, "Blacklist for DynamoDB tables to source from.")
             .define(Keys.TOPIC_FORMAT, ConfigDef.Type.STRING, "${table}",
                     ConfigDef.Importance.HIGH, "Format string for destination Kafka topic, use ``${table}`` as placeholder for source table name.");
