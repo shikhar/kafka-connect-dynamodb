@@ -38,6 +38,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -77,8 +78,17 @@ public class DynamoDbSinkTask extends SinkTask {
     @Override
     public void put(Collection<SinkRecord> records) {
         if (records.isEmpty()) return;
+        final Iterator<SinkRecord> recordIterator = records.iterator();
+        while (recordIterator.hasNext()) {
+            batchWrite(toWritesByTable(recordIterator, 25));
+        }
+        remainingRetries = config.maxRetries;
+    }
+
+    private Map<String, List<WriteRequest>> toWritesByTable(Iterator<SinkRecord> recordIterator, int limit) {
         final Map<String, List<WriteRequest>> writesByTable = new HashMap<>();
-        for (SinkRecord record : records) {
+        for (int count = 0; recordIterator.hasNext() && count < limit; count++) {
+            final SinkRecord record = recordIterator.next();
             final String tableName = config.tableFormat.replace("${topic}", record.topic());
             List<WriteRequest> writes = writesByTable.get(tableName);
             if (writes == null) {
@@ -99,13 +109,18 @@ public class DynamoDbSinkTask extends SinkTask {
             }
             writes.add(new WriteRequest(put));
         }
+        return writesByTable;
+    }
+
+    private void batchWrite(Map<String, List<WriteRequest>> writesByTable) {
         try {
             final BatchWriteItemResult batchWriteResponse = client.batchWriteItem(new BatchWriteItemRequest(writesByTable));
             if (!batchWriteResponse.getUnprocessedItems().isEmpty()) {
                 throw new UnprocessedItemsException(batchWriteResponse.getUnprocessedItems());
             }
         } catch (AmazonDynamoDBException | UnprocessedItemsException e) {
-            log.warn("Write of {} records failed, remainingRetries={}", records.size(), remainingRetries, e);
+            final int totalWrites = writesByTable.values().stream().mapToInt(List::size).sum();
+            log.warn("Batch write of {} records failed, remainingRetries={}", totalWrites, remainingRetries, e);
             if (remainingRetries == 0) {
                 throw new ConnectException(e);
             } else {
@@ -114,7 +129,6 @@ public class DynamoDbSinkTask extends SinkTask {
                 throw new RetriableException(e);
             }
         }
-        remainingRetries = config.maxRetries;
     }
 
     private void insert(ValueSource valueSource, Schema schema, Object value, PutRequest put) {
