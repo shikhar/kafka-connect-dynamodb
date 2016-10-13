@@ -88,9 +88,7 @@ public class DynamoDbSourceConnector extends SourceConnector {
             final ListTablesResult listResult = client.listTables(lastEvaluatedTableName);
 
             for (String tableName : listResult.getTableNames()) {
-                if ((config.tablesPrefix == null || tableName.startsWith(config.tablesPrefix)) &&
-                        (config.tablesBlacklist == null || !config.tablesBlacklist.contains(tableName)) &&
-                        (config.tablesWhitelist == null || config.tablesWhitelist.contains(tableName))) {
+                if (!acceptTable(tableName)) {
                     ignoredTables.add(tableName);
                     continue;
                 }
@@ -124,6 +122,12 @@ public class DynamoDbSourceConnector extends SourceConnector {
 
         client.shutdown();
         streamsClient.shutdown();
+    }
+
+    private boolean acceptTable(String tableName) {
+        return tableName.startsWith(config.tablesPrefix)
+                && (config.tablesWhitelist.isEmpty() || config.tablesWhitelist.contains(tableName))
+                && !config.tablesBlacklist.contains(tableName);
     }
 
     @Override

@@ -186,20 +186,24 @@ Configuration options
   * Default: "${table}"
   * Importance: high
 
+``tables.prefix``
+  Prefix for DynamoDB tables to source from.
+
+  * Type: string
+  * Default: ""
+  * Importance: medium
+
 ``tables.whitelist``
   Whitelist for DynamoDB tables to source from.
 
   * Type: list
+  * Default: ""
   * Importance: medium
 
 ``tables.blacklist``
   Blacklist for DynamoDB tables to source from.
 
   * Type: list
+  * Default: ""
   * Importance: medium
 
-``tables.prefix``
-  Prefix for DynamoDB tables to source from.
-
-  * Type: string
-  * Importance: medium
