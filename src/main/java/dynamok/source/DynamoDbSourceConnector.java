@@ -22,6 +22,7 @@ import com.amazonaws.services.dynamodbv2.model.DescribeStreamRequest;
 import com.amazonaws.services.dynamodbv2.model.DescribeStreamResult;
 import com.amazonaws.services.dynamodbv2.model.ListTablesResult;
 import com.amazonaws.services.dynamodbv2.model.Shard;
+import com.amazonaws.services.dynamodbv2.model.StreamSpecification;
 import com.amazonaws.services.dynamodbv2.model.StreamViewType;
 import com.amazonaws.services.dynamodbv2.model.TableDescription;
 import dynamok.Version;
@@ -95,11 +96,13 @@ public class DynamoDbSourceConnector extends SourceConnector {
 
                 final TableDescription tableDesc = client.describeTable(tableName).getTable();
 
-                if (!tableDesc.getStreamSpecification().isStreamEnabled()) {
+                final StreamSpecification streamSpec = tableDesc.getStreamSpecification();
+
+                if (streamSpec == null || !streamSpec.isStreamEnabled()) {
                     throw new ConnectException(String.format("DynamoDB table `%s` does not have streams enabled", tableName));
                 }
 
-                final String streamViewType = tableDesc.getStreamSpecification().getStreamViewType();
+                final String streamViewType = streamSpec.getStreamViewType();
                 if (!streamViewType.equals(StreamViewType.NEW_IMAGE.name()) && !streamViewType.equals(StreamViewType.NEW_AND_OLD_IMAGES.name())) {
                     throw new ConnectException(String.format("DynamoDB stream view type for table `%s` is %s", tableName, streamViewType));
                 }
