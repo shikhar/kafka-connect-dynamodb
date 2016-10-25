@@ -101,13 +101,13 @@ public class DynamoDbSourceTask extends SourceTask {
     }
 
     private SourceRecord toSourceRecord(Map<String, String> sourcePartition, String topic, StreamRecord dynamoRecord) {
-        // TODO also propagate timestamp via `dynamoRecord.getApproximateCreationDateTime.getTime` when that's exposed by Connect
         return new SourceRecord(
                 sourcePartition,
                 Collections.singletonMap(Keys.SEQNUM, dynamoRecord.getSequenceNumber()),
-                topic,
+                topic, null,
                 RecordMapper.attributesSchema(), RecordMapper.toConnect(dynamoRecord.getKeys()),
-                RecordMapper.attributesSchema(), RecordMapper.toConnect(dynamoRecord.getNewImage())
+                RecordMapper.attributesSchema(), RecordMapper.toConnect(dynamoRecord.getNewImage()),
+                dynamoRecord.getApproximateCreationDateTime().getTime()
         );
     }
 
