@@ -113,7 +113,7 @@ public class DynamoDbSinkTask extends SinkTask {
         for (int count = 0; recordIterator.hasNext() && count < config.batchSize; count++) {
             final SinkRecord record = recordIterator.next();
             final WriteRequest writeRequest = new WriteRequest(toPutRequest(record));
-            writesByTable.computeIfAbsent(tableName(record), k -> new ArrayList<>()).add(writeRequest);
+            writesByTable.computeIfAbsent(tableName(record), k -> new ArrayList<>(config.batchSize)).add(writeRequest);
         }
         return writesByTable;
     }
