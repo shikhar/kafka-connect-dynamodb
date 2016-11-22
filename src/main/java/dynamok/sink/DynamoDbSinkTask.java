@@ -78,49 +78,24 @@ public class DynamoDbSinkTask extends SinkTask {
     @Override
     public void put(Collection<SinkRecord> records) {
         if (records.isEmpty()) return;
-        final Iterator<SinkRecord> recordIterator = records.iterator();
-        while (recordIterator.hasNext()) {
-            batchWrite(toWritesByTable(recordIterator, 25));
-        }
-        remainingRetries = config.maxRetries;
-    }
 
-    private Map<String, List<WriteRequest>> toWritesByTable(Iterator<SinkRecord> recordIterator, int limit) {
-        final Map<String, List<WriteRequest>> writesByTable = new HashMap<>();
-        for (int count = 0; recordIterator.hasNext() && count < limit; count++) {
-            final SinkRecord record = recordIterator.next();
-            final String tableName = config.tableFormat.replace("${topic}", record.topic());
-            List<WriteRequest> writes = writesByTable.get(tableName);
-            if (writes == null) {
-                writes = new ArrayList<>();
-                writesByTable.put(tableName, writes);
-            }
-            final PutRequest put = new PutRequest();
-            if (!config.ignoreRecordValue) {
-                insert(ValueSource.RECORD_VALUE, record.valueSchema(), record.value(), put);
-            }
-            if (!config.ignoreRecordKey) {
-                insert(ValueSource.RECORD_KEY, record.keySchema(), record.key(), put);
-            }
-            if (config.kafkaCoordinateNames != null) {
-                put.addItemEntry(config.kafkaCoordinateNames.topic, new AttributeValue().withS(record.topic()));
-                put.addItemEntry(config.kafkaCoordinateNames.partition, new AttributeValue().withN(String.valueOf(record.kafkaPartition())));
-                put.addItemEntry(config.kafkaCoordinateNames.offset, new AttributeValue().withN(String.valueOf(record.kafkaOffset())));
-            }
-            writes.add(new WriteRequest(put));
-        }
-        return writesByTable;
-    }
-
-    private void batchWrite(Map<String, List<WriteRequest>> writesByTable) {
         try {
-            final BatchWriteItemResult batchWriteResponse = client.batchWriteItem(new BatchWriteItemRequest(writesByTable));
-            if (!batchWriteResponse.getUnprocessedItems().isEmpty()) {
-                throw new UnprocessedItemsException(batchWriteResponse.getUnprocessedItems());
+            if (records.size() == 1 || config.batchSize == 1) {
+                for (final SinkRecord record : records) {
+                    client.putItem(tableName(record), toPutRequest(record).getItem());
+                }
+            } else {
+                final Iterator<SinkRecord> recordIterator = records.iterator();
+                while (recordIterator.hasNext()) {
+                    final Map<String, List<WriteRequest>> writesByTable = toWritesByTable(recordIterator);
+                    final BatchWriteItemResult batchWriteResponse = client.batchWriteItem(new BatchWriteItemRequest(writesByTable));
+                    if (!batchWriteResponse.getUnprocessedItems().isEmpty()) {
+                        throw new UnprocessedItemsException(batchWriteResponse.getUnprocessedItems());
+                    }
+                }
             }
         } catch (AmazonDynamoDBException | UnprocessedItemsException e) {
-            final int totalWrites = writesByTable.values().stream().mapToInt(List::size).sum();
-            log.warn("Batch write of {} records failed, remainingRetries={}", totalWrites, remainingRetries, e);
+            log.warn("Write failed, remainingRetries={}", 0, remainingRetries, e);
             if (remainingRetries == 0) {
                 throw new ConnectException(e);
             } else {
@@ -129,6 +104,34 @@ public class DynamoDbSinkTask extends SinkTask {
                 throw new RetriableException(e);
             }
         }
+
+        remainingRetries = config.maxRetries;
+    }
+
+    private Map<String, List<WriteRequest>> toWritesByTable(Iterator<SinkRecord> recordIterator) {
+        final Map<String, List<WriteRequest>> writesByTable = new HashMap<>();
+        for (int count = 0; recordIterator.hasNext() && count < config.batchSize; count++) {
+            final SinkRecord record = recordIterator.next();
+            final WriteRequest writeRequest = new WriteRequest(toPutRequest(record));
+            writesByTable.computeIfAbsent(tableName(record), k -> new ArrayList<>()).add(writeRequest);
+        }
+        return writesByTable;
+    }
+
+    private PutRequest toPutRequest(SinkRecord record) {
+        final PutRequest put = new PutRequest();
+        if (!config.ignoreRecordValue) {
+            insert(ValueSource.RECORD_VALUE, record.valueSchema(), record.value(), put);
+        }
+        if (!config.ignoreRecordKey) {
+            insert(ValueSource.RECORD_KEY, record.keySchema(), record.key(), put);
+        }
+        if (config.kafkaCoordinateNames != null) {
+            put.addItemEntry(config.kafkaCoordinateNames.topic, new AttributeValue().withS(record.topic()));
+            put.addItemEntry(config.kafkaCoordinateNames.partition, new AttributeValue().withN(String.valueOf(record.kafkaPartition())));
+            put.addItemEntry(config.kafkaCoordinateNames.offset, new AttributeValue().withN(String.valueOf(record.kafkaOffset())));
+        }
+        return put;
     }
 
     private void insert(ValueSource valueSource, Schema schema, Object value, PutRequest put) {
@@ -150,6 +153,10 @@ public class DynamoDbSinkTask extends SinkTask {
         } else {
             throw new ConnectException("No top attribute name configured for " + valueSource + ", and it could not be converted to Map: " + attributeValue);
         }
+    }
+
+    private String tableName(SinkRecord record) {
+        return config.tableFormat.replace("${topic}", record.topic());
     }
 
     @Override

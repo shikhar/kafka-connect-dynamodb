@@ -32,6 +32,7 @@ class ConnectorConfig extends AbstractConfig {
         ;
         static final String REGION = "region";
         static final String TABLE_FORMAT = "table.format";
+        static final String BATCH_SIZE = "batch.size";
         static final String KAFKA_ATTRIBUTES = "kafka.attributes";
         static final String IGNORE_RECORD_KEY = "ignore.record.key";
         static final String IGNORE_RECORD_VALUE = "ignore.record.value";
@@ -49,6 +50,8 @@ class ConnectorConfig extends AbstractConfig {
             }, ConfigDef.Importance.HIGH, "AWS region for the source DynamoDB.")
             .define(Keys.TABLE_FORMAT, ConfigDef.Type.STRING, "${topic}",
                     ConfigDef.Importance.HIGH, "Format string for destination DynamoDB table name, use ``${topic}`` as placeholder for source topic.")
+            .define(Keys.BATCH_SIZE, ConfigDef.Type.INT, 1, ConfigDef.Range.between(1, 25),
+                    ConfigDef.Importance.HIGH, "Batch size between 1 (PutItemRequest for each record) and 25 (the maximum number of items in BatchWriteItem)")
             .define(Keys.KAFKA_ATTRIBUTES, ConfigDef.Type.LIST, "kafka_topic,kafka_partition,kafka_offset", (key, names) -> {
                 final List namesList = (List) names;
                 if (!namesList.isEmpty() && namesList.size() != 3)
@@ -72,6 +75,7 @@ class ConnectorConfig extends AbstractConfig {
 
     final Regions region;
     final String tableFormat;
+    final int batchSize;
     final KafkaCoordinateNames kafkaCoordinateNames;
     final boolean ignoreRecordKey;
     final boolean ignoreRecordValue;
@@ -84,6 +88,7 @@ class ConnectorConfig extends AbstractConfig {
         super(CONFIG_DEF, props);
         region = Regions.fromName(getString(Keys.REGION));
         tableFormat = getString(Keys.TABLE_FORMAT);
+        batchSize = getInt(Keys.BATCH_SIZE);
         kafkaCoordinateNames = kafkaCoordinateNamesFromConfig(getList(Keys.KAFKA_ATTRIBUTES));
         ignoreRecordKey = getBoolean(Keys.IGNORE_RECORD_KEY);
         ignoreRecordValue = getBoolean(Keys.IGNORE_RECORD_VALUE);
