@@ -16,6 +16,10 @@
 
 package dynamok.source;
 
+import com.amazonaws.auth.AWSCredentials;
+import com.amazonaws.auth.BasicAWSCredentials;
+import com.amazonaws.auth.SystemPropertiesCredentialsProvider;
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreamsClient;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreamsClient;
 import com.amazonaws.services.dynamodbv2.model.GetRecordsRequest;
 import com.amazonaws.services.dynamodbv2.model.GetRecordsResult;
@@ -58,7 +62,25 @@ public class DynamoDbSourceTask extends SourceTask {
     public void start(Map<String, String> props) {
         config = new TaskConfig(props);
 
-        streamsClient = new AmazonDynamoDBStreamsClient();
+            // TODO : Verify functionality of 
+            //      SystemPropertiesCredentialsProvider
+        if (config.accessKeyId == null  ||  config.secretKeyId == null) {
+            SystemPropertiesCredentialsProvider cp = new SystemPropertiesCredentialsProvider();
+            streamsClient = new AmazonDynamoDBStreamsClient(cp.getCredentials());
+            log.debug("AWS credentials from SystemProperties: {} {}",
+                    cp.getCredentials().getAWSAccessKeyId().toString(),
+                    cp.getCredentials().getAWSSecretKey().toString());
+        } else if (config.accessKeyId.toString().length() == 0  ||  config.secretKeyId.toString().length() == 0) {
+            streamsClient = new AmazonDynamoDBStreamsClient();
+            log.debug("AmazonDynamoDBStreamsClient created with default properties");
+        } else {
+            BasicAWSCredentials awsCreds = new BasicAWSCredentials(config.accessKeyId.toString(), config.secretKeyId.toString());
+            streamsClient = new AmazonDynamoDBStreamsClient(awsCreds);
+            log.debug("AWS credentials from connector configuration: {} {}",
+                    awsCreds.getAWSAccessKeyId().toString(),
+                    awsCreds.getAWSSecretKey().toString());
+        }
+
         streamsClient.configureRegion(config.region);
 
         assignedShards = new ArrayList<>(config.shards);
@@ -86,6 +108,7 @@ public class DynamoDbSourceTask extends SourceTask {
             shardIterators.remove(shardId);
             assignedShards.remove(shardId);
         } else {
+            log.debug("Retrieved {} records from shard ID `{}`", rsp.getRecords().size(), shardId);
             shardIterators.put(shardId, rsp.getNextShardIterator());
         }
 

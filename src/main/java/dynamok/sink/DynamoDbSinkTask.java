@@ -16,16 +16,16 @@
 
 package dynamok.sink;
 
+import com.amazonaws.auth.AWSCredentials;
+import com.amazonaws.auth.BasicAWSCredentials;
+import com.amazonaws.auth.SystemPropertiesCredentialsProvider;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
-import com.amazonaws.services.dynamodbv2.model.AmazonDynamoDBException;
-import com.amazonaws.services.dynamodbv2.model.AttributeValue;
-import com.amazonaws.services.dynamodbv2.model.BatchWriteItemRequest;
-import com.amazonaws.services.dynamodbv2.model.BatchWriteItemResult;
-import com.amazonaws.services.dynamodbv2.model.PutRequest;
-import com.amazonaws.services.dynamodbv2.model.WriteRequest;
+import com.amazonaws.services.dynamodbv2.model.*;
 import dynamok.Version;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.serialization.IntegerDeserializer;
+import org.apache.kafka.common.utils.SystemTime;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.DataException;
@@ -41,6 +41,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+
 
 public class DynamoDbSinkTask extends SinkTask {
 
@@ -70,7 +71,26 @@ public class DynamoDbSinkTask extends SinkTask {
     @Override
     public void start(Map<String, String> props) {
         config = new ConnectorConfig(props);
-        client = new AmazonDynamoDBClient();
+
+            // TODO : Verify functionality of 
+            //      SystemPropertiesCredentialsProvider
+        if (config.accessKeyId == null  ||  config.secretKeyId == null) {
+            SystemPropertiesCredentialsProvider cp = new SystemPropertiesCredentialsProvider();
+            client = new AmazonDynamoDBClient(cp.getCredentials());
+            log.debug("AWS credentials from SystemProperties: {} {}",
+                    cp.getCredentials().getAWSAccessKeyId().toString(),
+                    cp.getCredentials().getAWSSecretKey().toString());
+        } else if (config.accessKeyId.value().length() == 0  ||  config.secretKeyId.value().length() == 0) {
+            client = new AmazonDynamoDBClient();
+            log.debug("AmazonDynamoDBClient created with default properties");
+        } else {
+            BasicAWSCredentials awsCreds = new BasicAWSCredentials(config.accessKeyId.value(), config.secretKeyId.value());
+            client = new AmazonDynamoDBClient(awsCreds);
+            log.debug("AWS credentials from connector configuration: {} {}",
+                    awsCreds.getAWSAccessKeyId().toString(),
+                    awsCreds.getAWSSecretKey().toString());
+        }
+
         client.configureRegion(config.region);
         remainingRetries = config.maxRetries;
     }
@@ -94,6 +114,11 @@ public class DynamoDbSinkTask extends SinkTask {
                     }
                 }
             }
+        } catch (LimitExceededException | ProvisionedThroughputExceededException e) {
+            log.debug("Batch write of {} records failed with Limit/Throughput Exceeded exception; backing off",
+                    Integer.toString(config.batchSize));
+            context.timeout(config.retryBackoffMs);
+            throw new RetriableException(e);
         } catch (AmazonDynamoDBException | UnprocessedItemsException e) {
             log.warn("Write failed, remainingRetries={}", 0, remainingRetries, e);
             if (remainingRetries == 0) {

@@ -18,6 +18,7 @@ package dynamok.source;
 
 import com.amazonaws.regions.Regions;
 import org.apache.kafka.common.config.AbstractConfig;
+import org.apache.kafka.common.config.ConfigException;
 
 import java.util.Arrays;
 import java.util.List;
@@ -30,6 +31,8 @@ class TaskConfig extends AbstractConfig {
         ;
 
         static String REGION = "region";
+        static String ACCESS_KEY_ID = "access.key.id";
+        static String SECRET_KEY_ID = "secret.key.id";
         static String TOPIC_FORMAT = "topic.format";
         static String SHARDS = "shards";
         static String TABLE = "table";
@@ -37,6 +40,8 @@ class TaskConfig extends AbstractConfig {
     }
 
     final Regions region;
+    final String accessKeyId;
+    final String secretKeyId;
     final String topicFormat;
     final List<String> shards;
 
@@ -45,6 +50,23 @@ class TaskConfig extends AbstractConfig {
         region = Regions.fromName(getString(Keys.REGION));
         topicFormat = getString(Keys.TOPIC_FORMAT);
         shards = Arrays.stream(getString(Keys.SHARDS).split(",")).filter(shardId -> !shardId.isEmpty()).collect(Collectors.toList());
+
+        String access, secret;
+        try {
+            access = getString(Keys.ACCESS_KEY_ID);
+        }
+        catch (ConfigException e) {
+            access = "";
+        }
+        accessKeyId = access;
+
+        try {
+            secret = getString(Keys.SECRET_KEY_ID);
+        }
+        catch (ConfigException e) {
+            secret = "";
+        }
+        secretKeyId = secret;
     }
 
     String tableForShard(String shardId) {
