@@ -10,7 +10,13 @@ Run::
 
     $ mvn clean package
 
-Then you will find this connector and required JARs it depends upon in ``target/kafka-connect-dynamodb-0.1.0-SNAPSHOT-development/share/java/kafka-connect-dynamodb/``.
+Then you will find this connector and required JARs it depends upon in ``target/kafka-connect-dynamodb-$version-SNAPSHOT-package/share/java/kafka-connect-dynamodb/*``.
+
+To create an uber JAR::
+
+    $ mvn -P standalone clean package
+
+The uber JAR will be created at ``target/kafka-connect-dynamodb-$version-SNAPSHOT-standalone.jar``.
 
 Sink Connector
 ==============
