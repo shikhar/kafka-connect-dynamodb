@@ -16,6 +16,9 @@
 
 package dynamok.source;
 
+import com.amazonaws.auth.AWSCredentials;
+import com.amazonaws.auth.BasicAWSCredentials;
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreamsClient;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreamsClient;
 import com.amazonaws.services.dynamodbv2.model.GetRecordsRequest;
 import com.amazonaws.services.dynamodbv2.model.GetRecordsResult;
@@ -58,7 +61,15 @@ public class DynamoDbSourceTask extends SourceTask {
     public void start(Map<String, String> props) {
         config = new TaskConfig(props);
 
-        streamsClient = new AmazonDynamoDBStreamsClient();
+        if (config.accessKeyId.toString().isEmpty()  ||  config.secretKeyId.toString().isEmpty()) {
+            streamsClient = new AmazonDynamoDBStreamsClient();
+            log.debug("AmazonDynamoDBStreamsClient created with default credentials");
+        } else {
+            BasicAWSCredentials awsCreds = new BasicAWSCredentials(config.accessKeyId.toString(), config.secretKeyId.toString());
+            streamsClient = new AmazonDynamoDBStreamsClient(awsCreds);
+            log.debug("AmazonDynamoDBStreamsClient created with AWS credentials from connector configuration");
+        }
+
         streamsClient.configureRegion(config.region);
 
         assignedShards = new ArrayList<>(config.shards);
@@ -86,6 +97,7 @@ public class DynamoDbSourceTask extends SourceTask {
             shardIterators.remove(shardId);
             assignedShards.remove(shardId);
         } else {
+            log.debug("Retrieved {} records from shard ID `{}`", rsp.getRecords().size(), shardId);
             shardIterators.put(shardId, rsp.getNextShardIterator());
         }
 

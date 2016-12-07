@@ -20,6 +20,8 @@ import com.amazonaws.regions.Regions;
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigException;
+import org.apache.kafka.common.config.types.Password;
+import org.apache.kafka.common.metrics.stats.Rate;
 
 import java.util.Arrays;
 import java.util.Iterator;
@@ -31,6 +33,8 @@ class ConnectorConfig extends AbstractConfig {
     private enum Keys {
         ;
         static final String REGION = "region";
+        static final String ACCESS_KEY_ID = "access.key.id";
+        static final String SECRET_KEY_ID = "secret.key.id";
         static final String TABLE_FORMAT = "table.format";
         static final String BATCH_SIZE = "batch.size";
         static final String KAFKA_ATTRIBUTES = "kafka.attributes";
@@ -48,6 +52,12 @@ class ConnectorConfig extends AbstractConfig {
                     throw new ConfigException("Invalid AWS region: " + regionName);
                 }
             }, ConfigDef.Importance.HIGH, "AWS region for the source DynamoDB.")
+            .define(Keys.ACCESS_KEY_ID, ConfigDef.Type.PASSWORD, "",
+                    ConfigDef.Importance.LOW, "Explicit AWS Access Credentials. " +
+                            "Leave empty to utilize the default credential provider chain")
+            .define(Keys.SECRET_KEY_ID, ConfigDef.Type.PASSWORD, "",
+                    ConfigDef.Importance.LOW, "Explicit AWS Secret Access Credentials. " +
+                            "Leave empty to utilize the default credential provider chain")
             .define(Keys.TABLE_FORMAT, ConfigDef.Type.STRING, "${topic}",
                     ConfigDef.Importance.HIGH, "Format string for destination DynamoDB table name, use ``${topic}`` as placeholder for source topic.")
             .define(Keys.BATCH_SIZE, ConfigDef.Type.INT, 1, ConfigDef.Range.between(1, 25),
@@ -74,6 +84,8 @@ class ConnectorConfig extends AbstractConfig {
                     ConfigDef.Importance.MEDIUM, "The time in milliseconds to wait following an error before a retry attempt is made.");
 
     final Regions region;
+    final Password accessKeyId;
+    final Password secretKeyId;
     final String tableFormat;
     final int batchSize;
     final KafkaCoordinateNames kafkaCoordinateNames;
@@ -84,9 +96,11 @@ class ConnectorConfig extends AbstractConfig {
     final int maxRetries;
     final int retryBackoffMs;
 
-    ConnectorConfig(Map<String, String> props) {
-        super(CONFIG_DEF, props);
+    ConnectorConfig(ConfigDef config, Map<String, String> parsedConfig) {
+        super(config, parsedConfig);
         region = Regions.fromName(getString(Keys.REGION));
+        accessKeyId = getPassword(Keys.ACCESS_KEY_ID);
+        secretKeyId = getPassword(Keys.SECRET_KEY_ID);
         tableFormat = getString(Keys.TABLE_FORMAT);
         batchSize = getInt(Keys.BATCH_SIZE);
         kafkaCoordinateNames = kafkaCoordinateNamesFromConfig(getList(Keys.KAFKA_ATTRIBUTES));
@@ -96,6 +110,10 @@ class ConnectorConfig extends AbstractConfig {
         topValueAttribute = getString(Keys.TOP_VALUE_ATTRIBUTE);
         maxRetries = getInt(Keys.MAX_RETRIES);
         retryBackoffMs = getInt(Keys.RETRY_BACKOFF_MS);
+    }
+
+    ConnectorConfig(Map<String, String> props) {
+        this(CONFIG_DEF, props);
     }
 
     private static KafkaCoordinateNames kafkaCoordinateNamesFromConfig(List<String> names) {

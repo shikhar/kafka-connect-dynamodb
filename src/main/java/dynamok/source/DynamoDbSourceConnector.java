@@ -16,6 +16,8 @@
 
 package dynamok.source;
 
+import com.amazonaws.auth.AWSCredentials;
+import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreamsClient;
 import com.amazonaws.services.dynamodbv2.model.DescribeStreamRequest;
@@ -75,10 +77,21 @@ public class DynamoDbSourceConnector extends SourceConnector {
         config = new ConnectorConfig(props);
         streamShards = new HashMap<>();
 
-        final AmazonDynamoDBClient client = new AmazonDynamoDBClient();
-        client.configureRegion(config.region);
+        final AmazonDynamoDBClient client;
+        final AmazonDynamoDBStreamsClient streamsClient;
 
-        final AmazonDynamoDBStreamsClient streamsClient = new AmazonDynamoDBStreamsClient();
+        if (config.accessKeyId.value().isEmpty()  ||  config.secretKeyId.value().isEmpty()) {
+            client = new AmazonDynamoDBClient();
+            streamsClient = new AmazonDynamoDBStreamsClient();
+            log.debug("AmazonDynamoDB clients created with default credentials");
+        } else {
+            BasicAWSCredentials awsCreds = new BasicAWSCredentials(config.accessKeyId.value(), config.secretKeyId.value());
+            client = new AmazonDynamoDBClient(awsCreds);
+            streamsClient = new AmazonDynamoDBStreamsClient(awsCreds);
+            log.debug("AmazonDynamoDB clients created with AWS credentials from connector configuration");
+        }
+
+        client.configureRegion(config.region);
         streamsClient.configureRegion(config.region);
 
         final Set<String> ignoredTables = new HashSet<>();

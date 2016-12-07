@@ -20,6 +20,7 @@ import com.amazonaws.regions.Regions;
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigException;
+import org.apache.kafka.common.config.types.Password;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -31,6 +32,8 @@ class ConnectorConfig extends AbstractConfig {
     private enum Keys {
         ;
         static final String REGION = "region";
+        static final String ACCESS_KEY_ID = "access.key.id";
+        static final String SECRET_KEY_ID = "secret.key.id";
         static final String TABLES_PREFIX = "tables.prefix";
         static final String TABLES_WHITELIST = "tables.whitelist";
         static final String TABLES_BLACKLIST = "tables.blacklist";
@@ -43,6 +46,12 @@ class ConnectorConfig extends AbstractConfig {
                     throw new ConfigException("Invalid AWS region: " + regionName);
                 }
             }, ConfigDef.Importance.HIGH, "AWS region for the source DynamoDB.")
+            .define(Keys.ACCESS_KEY_ID, ConfigDef.Type.PASSWORD, "",
+                    ConfigDef.Importance.LOW, "Explicit AWS Access Credentials. " +
+                            "Leave empty to utilize the default credential provider chain")
+            .define(Keys.SECRET_KEY_ID, ConfigDef.Type.PASSWORD, "",
+                    ConfigDef.Importance.LOW, "Explicit AWS Secret Access Credentials. " +
+                            "Leave empty to utilize the default credential provider chain")
             .define(Keys.TABLES_PREFIX, ConfigDef.Type.STRING, "",
                     ConfigDef.Importance.MEDIUM, "Prefix for DynamoDB tables to source from.")
             .define(Keys.TABLES_WHITELIST, ConfigDef.Type.LIST, Collections.emptyList(),
@@ -53,6 +62,8 @@ class ConnectorConfig extends AbstractConfig {
                     ConfigDef.Importance.HIGH, "Format string for destination Kafka topic, use ``${table}`` as placeholder for source table name.");
 
     final Regions region;
+    final Password accessKeyId;
+    final Password secretKeyId;
     final String topicFormat;
     final String tablesPrefix;
     final List<String> tablesWhitelist;
@@ -61,6 +72,8 @@ class ConnectorConfig extends AbstractConfig {
     ConnectorConfig(Map<String, String> props) {
         super(CONFIG_DEF, props);
         region = Regions.fromName(getString(Keys.REGION));
+        accessKeyId = getPassword(Keys.ACCESS_KEY_ID);
+        secretKeyId = getPassword(Keys.SECRET_KEY_ID);
         tablesPrefix = getString(Keys.TABLES_PREFIX);
         tablesWhitelist = getList(Keys.TABLES_WHITELIST);
         tablesBlacklist = getList(Keys.TABLES_BLACKLIST);
