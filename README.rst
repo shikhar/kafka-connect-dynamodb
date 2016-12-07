@@ -96,6 +96,13 @@ Configuration options
   * Default: ""
   * Importance: high
 
+``batch.size``
+  Batch size between 1 (dedicated ``PutItemRequest`` for each record) and 25 (which is the maximum number of items in a ``BatchWriteItemRequest``)
+
+  * Type: int
+  * Default: 1
+  * Importance: high
+
 ``kafka.attributes``
   Trio of ``topic,partition,offset`` attribute names to include in records, set to empty to omit these attributes.
 
