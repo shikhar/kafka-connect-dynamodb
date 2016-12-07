@@ -18,7 +18,6 @@ package dynamok.sink;
 
 import com.amazonaws.auth.AWSCredentials;
 import com.amazonaws.auth.BasicAWSCredentials;
-import com.amazonaws.auth.SystemPropertiesCredentialsProvider;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
 import com.amazonaws.services.dynamodbv2.model.*;
 import dynamok.Version;
@@ -72,23 +71,13 @@ public class DynamoDbSinkTask extends SinkTask {
     public void start(Map<String, String> props) {
         config = new ConnectorConfig(props);
 
-            // TODO : Verify functionality of 
-            //      SystemPropertiesCredentialsProvider
-        if (config.accessKeyId == null  ||  config.secretKeyId == null) {
-            SystemPropertiesCredentialsProvider cp = new SystemPropertiesCredentialsProvider();
-            client = new AmazonDynamoDBClient(cp.getCredentials());
-            log.debug("AWS credentials from SystemProperties: {} {}",
-                    cp.getCredentials().getAWSAccessKeyId().toString(),
-                    cp.getCredentials().getAWSSecretKey().toString());
-        } else if (config.accessKeyId.value().length() == 0  ||  config.secretKeyId.value().length() == 0) {
+        if (config.accessKeyId.value().isEmpty()  ||  config.secretKeyId.value().isEmpty()) {
             client = new AmazonDynamoDBClient();
-            log.debug("AmazonDynamoDBClient created with default properties");
+            log.debug("AmazonDynamoDBClient created with default credentials");
         } else {
             BasicAWSCredentials awsCreds = new BasicAWSCredentials(config.accessKeyId.value(), config.secretKeyId.value());
             client = new AmazonDynamoDBClient(awsCreds);
-            log.debug("AWS credentials from connector configuration: {} {}",
-                    awsCreds.getAWSAccessKeyId().toString(),
-                    awsCreds.getAWSSecretKey().toString());
+            log.debug("AmazonDynamoDBClient created with AWS credentials from connector configuration");
         }
 
         client.configureRegion(config.region);
@@ -115,8 +104,7 @@ public class DynamoDbSinkTask extends SinkTask {
                 }
             }
         } catch (LimitExceededException | ProvisionedThroughputExceededException e) {
-            log.debug("Batch write of {} records failed with Limit/Throughput Exceeded exception; backing off",
-                    Integer.toString(config.batchSize));
+            log.debug("Write failed with Limit/Throughput Exceeded exception; backing off");
             context.timeout(config.retryBackoffMs);
             throw new RetriableException(e);
         } catch (AmazonDynamoDBException | UnprocessedItemsException e) {

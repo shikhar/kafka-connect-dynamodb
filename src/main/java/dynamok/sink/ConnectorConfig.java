@@ -53,11 +53,11 @@ class ConnectorConfig extends AbstractConfig {
                 }
             }, ConfigDef.Importance.HIGH, "AWS region for the source DynamoDB.")
             .define(Keys.ACCESS_KEY_ID, ConfigDef.Type.PASSWORD, "",
-                    ConfigDef.Importance.LOW, "Explicit AWS Access Credentials" +
-                            "Leave empty to utilize system-level AWS Properties.")
+                    ConfigDef.Importance.LOW, "Explicit AWS Access Credentials. " +
+                            "Leave empty to utilize the default credential provider chain")
             .define(Keys.SECRET_KEY_ID, ConfigDef.Type.PASSWORD, "",
-                    ConfigDef.Importance.LOW, "Explicit AWS Secret Access Credentials" +
-                            "Leave empty to utilize system-level AWS Properties.")
+                    ConfigDef.Importance.LOW, "Explicit AWS Secret Access Credentials. " +
+                            "Leave empty to utilize the default credential provider chain")
             .define(Keys.TABLE_FORMAT, ConfigDef.Type.STRING, "${topic}",
                     ConfigDef.Importance.HIGH, "Format string for destination DynamoDB table name, use ``${topic}`` as placeholder for source topic.")
             .define(Keys.BATCH_SIZE, ConfigDef.Type.INT, 1, ConfigDef.Range.between(1, 25),

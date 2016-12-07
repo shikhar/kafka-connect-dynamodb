@@ -48,25 +48,10 @@ class TaskConfig extends AbstractConfig {
     TaskConfig(Map<String, String> props) {
         super((Map) props);
         region = Regions.fromName(getString(Keys.REGION));
+        accessKeyId = props.getOrDefault(Keys.ACCESS_KEY_ID, "");
+        secretKeyId = props.getOrDefault(Keys.SECRET_KEY_ID, "");
         topicFormat = getString(Keys.TOPIC_FORMAT);
         shards = Arrays.stream(getString(Keys.SHARDS).split(",")).filter(shardId -> !shardId.isEmpty()).collect(Collectors.toList());
-
-        String access, secret;
-        try {
-            access = getString(Keys.ACCESS_KEY_ID);
-        }
-        catch (ConfigException e) {
-            access = "";
-        }
-        accessKeyId = access;
-
-        try {
-            secret = getString(Keys.SECRET_KEY_ID);
-        }
-        catch (ConfigException e) {
-            secret = "";
-        }
-        secretKeyId = secret;
     }
 
     String tableForShard(String shardId) {

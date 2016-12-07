@@ -18,7 +18,6 @@ package dynamok.source;
 
 import com.amazonaws.auth.AWSCredentials;
 import com.amazonaws.auth.BasicAWSCredentials;
-import com.amazonaws.auth.SystemPropertiesCredentialsProvider;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreamsClient;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreamsClient;
 import com.amazonaws.services.dynamodbv2.model.GetRecordsRequest;
@@ -62,23 +61,13 @@ public class DynamoDbSourceTask extends SourceTask {
     public void start(Map<String, String> props) {
         config = new TaskConfig(props);
 
-            // TODO : Verify functionality of 
-            //      SystemPropertiesCredentialsProvider
-        if (config.accessKeyId == null  ||  config.secretKeyId == null) {
-            SystemPropertiesCredentialsProvider cp = new SystemPropertiesCredentialsProvider();
-            streamsClient = new AmazonDynamoDBStreamsClient(cp.getCredentials());
-            log.debug("AWS credentials from SystemProperties: {} {}",
-                    cp.getCredentials().getAWSAccessKeyId().toString(),
-                    cp.getCredentials().getAWSSecretKey().toString());
-        } else if (config.accessKeyId.toString().length() == 0  ||  config.secretKeyId.toString().length() == 0) {
+        if (config.accessKeyId.toString().isEmpty()  ||  config.secretKeyId.toString().isEmpty()) {
             streamsClient = new AmazonDynamoDBStreamsClient();
-            log.debug("AmazonDynamoDBStreamsClient created with default properties");
+            log.debug("AmazonDynamoDBStreamsClient created with default credentials");
         } else {
             BasicAWSCredentials awsCreds = new BasicAWSCredentials(config.accessKeyId.toString(), config.secretKeyId.toString());
             streamsClient = new AmazonDynamoDBStreamsClient(awsCreds);
-            log.debug("AWS credentials from connector configuration: {} {}",
-                    awsCreds.getAWSAccessKeyId().toString(),
-                    awsCreds.getAWSSecretKey().toString());
+            log.debug("AmazonDynamoDBStreamsClient created with AWS credentials from connector configuration");
         }
 
         streamsClient.configureRegion(config.region);
