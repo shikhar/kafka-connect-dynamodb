@@ -49,22 +49,22 @@ class TaskConfig {
     TaskConfig(Map<String, String> props) {
         this.props = props;
 
-        region = Regions.fromName(getConfig(Keys.REGION));
-        accessKeyId = getConfig(Keys.ACCESS_KEY_ID, "");
-        secretKey = getConfig(Keys.SECRET_KEY, "");
-        topicFormat = getConfig(Keys.TOPIC_FORMAT);
-        shards = Arrays.stream(getConfig(Keys.SHARDS).split(",")).filter(shardId -> !shardId.isEmpty()).collect(Collectors.toList());
+        region = Regions.fromName(getValue(Keys.REGION));
+        accessKeyId = getValue(Keys.ACCESS_KEY_ID, "");
+        secretKey = getValue(Keys.SECRET_KEY, "");
+        topicFormat = getValue(Keys.TOPIC_FORMAT);
+        shards = Arrays.stream(getValue(Keys.SHARDS).split(",")).filter(shardId -> !shardId.isEmpty()).collect(Collectors.toList());
     }
 
     String tableForShard(String shardId) {
-        return getConfig(shardId + "." + Keys.TABLE);
+        return getValue(shardId + "." + Keys.TABLE);
     }
 
     String streamArnForShard(String shardId) {
-        return getConfig(shardId + "." + Keys.STREAM_ARN);
+        return getValue(shardId + "." + Keys.STREAM_ARN);
     }
 
-    private String getConfig(String key) {
+    private String getValue(String key) {
         final String value = props.get(key);
         if (value == null) {
             throw new ConfigException(key, "Missing task configuration");
@@ -72,7 +72,7 @@ class TaskConfig {
         return value;
     }
 
-    private String getConfig(String key, String defaultValue) {
+    private String getValue(String key, String defaultValue) {
         return props.getOrDefault(key, defaultValue);
     }
 
