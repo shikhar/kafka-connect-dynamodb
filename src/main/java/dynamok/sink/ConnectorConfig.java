@@ -21,7 +21,6 @@ import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.common.config.types.Password;
-import org.apache.kafka.common.metrics.stats.Rate;
 
 import java.util.Arrays;
 import java.util.Iterator;
@@ -34,7 +33,7 @@ class ConnectorConfig extends AbstractConfig {
         ;
         static final String REGION = "region";
         static final String ACCESS_KEY_ID = "access.key.id";
-        static final String SECRET_KEY_ID = "secret.key.id";
+        static final String SECRET_KEY = "secret.key";
         static final String TABLE_FORMAT = "table.format";
         static final String BATCH_SIZE = "batch.size";
         static final String KAFKA_ATTRIBUTES = "kafka.attributes";
@@ -48,16 +47,16 @@ class ConnectorConfig extends AbstractConfig {
 
     static final ConfigDef CONFIG_DEF = new ConfigDef()
             .define(Keys.REGION, ConfigDef.Type.STRING, ConfigDef.NO_DEFAULT_VALUE, (key, regionName) -> {
-                if (!Arrays.stream(Regions.values()).anyMatch(x -> x.getName().equals(regionName))) {
+                if (Arrays.stream(Regions.values()).noneMatch(x -> x.getName().equals(regionName))) {
                     throw new ConfigException("Invalid AWS region: " + regionName);
                 }
-            }, ConfigDef.Importance.HIGH, "AWS region for the source DynamoDB.")
+            }, ConfigDef.Importance.HIGH, "AWS region for DynamoDB.")
             .define(Keys.ACCESS_KEY_ID, ConfigDef.Type.PASSWORD, "",
-                    ConfigDef.Importance.LOW, "Explicit AWS Access Credentials. " +
-                            "Leave empty to utilize the default credential provider chain")
-            .define(Keys.SECRET_KEY_ID, ConfigDef.Type.PASSWORD, "",
-                    ConfigDef.Importance.LOW, "Explicit AWS Secret Access Credentials. " +
-                            "Leave empty to utilize the default credential provider chain")
+                    ConfigDef.Importance.LOW, "Explicit AWS access key ID. " +
+                            "Leave empty to utilize the default credential provider chain.")
+            .define(Keys.SECRET_KEY, ConfigDef.Type.PASSWORD, "",
+                    ConfigDef.Importance.LOW, "Explicit AWS secret access key. " +
+                            "Leave empty to utilize the default credential provider chain.")
             .define(Keys.TABLE_FORMAT, ConfigDef.Type.STRING, "${topic}",
                     ConfigDef.Importance.HIGH, "Format string for destination DynamoDB table name, use ``${topic}`` as placeholder for source topic.")
             .define(Keys.BATCH_SIZE, ConfigDef.Type.INT, 1, ConfigDef.Range.between(1, 25),
@@ -85,7 +84,7 @@ class ConnectorConfig extends AbstractConfig {
 
     final Regions region;
     final Password accessKeyId;
-    final Password secretKeyId;
+    final Password secretKey;
     final String tableFormat;
     final int batchSize;
     final KafkaCoordinateNames kafkaCoordinateNames;
@@ -100,7 +99,7 @@ class ConnectorConfig extends AbstractConfig {
         super(config, parsedConfig);
         region = Regions.fromName(getString(Keys.REGION));
         accessKeyId = getPassword(Keys.ACCESS_KEY_ID);
-        secretKeyId = getPassword(Keys.SECRET_KEY_ID);
+        secretKey = getPassword(Keys.SECRET_KEY);
         tableFormat = getString(Keys.TABLE_FORMAT);
         batchSize = getInt(Keys.BATCH_SIZE);
         kafkaCoordinateNames = kafkaCoordinateNamesFromConfig(getList(Keys.KAFKA_ATTRIBUTES));

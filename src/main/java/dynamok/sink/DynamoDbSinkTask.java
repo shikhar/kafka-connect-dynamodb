@@ -16,15 +16,20 @@
 
 package dynamok.sink;
 
-import com.amazonaws.auth.AWSCredentials;
 import com.amazonaws.auth.BasicAWSCredentials;
+import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
-import com.amazonaws.services.dynamodbv2.model.*;
+import com.amazonaws.services.dynamodbv2.model.AmazonDynamoDBException;
+import com.amazonaws.services.dynamodbv2.model.AttributeValue;
+import com.amazonaws.services.dynamodbv2.model.BatchWriteItemRequest;
+import com.amazonaws.services.dynamodbv2.model.BatchWriteItemResult;
+import com.amazonaws.services.dynamodbv2.model.LimitExceededException;
+import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughputExceededException;
+import com.amazonaws.services.dynamodbv2.model.PutRequest;
+import com.amazonaws.services.dynamodbv2.model.WriteRequest;
 import dynamok.Version;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.common.serialization.IntegerDeserializer;
-import org.apache.kafka.common.utils.SystemTime;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.DataException;
@@ -71,11 +76,11 @@ public class DynamoDbSinkTask extends SinkTask {
     public void start(Map<String, String> props) {
         config = new ConnectorConfig(props);
 
-        if (config.accessKeyId.value().isEmpty()  ||  config.secretKeyId.value().isEmpty()) {
-            client = new AmazonDynamoDBClient();
-            log.debug("AmazonDynamoDBClient created with default credentials");
+        if (config.accessKeyId.value().isEmpty() || config.secretKey.value().isEmpty()) {
+            client = new AmazonDynamoDBClient(DefaultAWSCredentialsProviderChain.getInstance());
+            log.debug("AmazonDynamoDBStreamsClient created with DefaultAWSCredentialsProviderChain");
         } else {
-            BasicAWSCredentials awsCreds = new BasicAWSCredentials(config.accessKeyId.value(), config.secretKeyId.value());
+            final BasicAWSCredentials awsCreds = new BasicAWSCredentials(config.accessKeyId.value(), config.secretKey.value());
             client = new AmazonDynamoDBClient(awsCreds);
             log.debug("AmazonDynamoDBClient created with AWS credentials from connector configuration");
         }

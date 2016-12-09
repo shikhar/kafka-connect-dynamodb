@@ -17,7 +17,6 @@
 package dynamok.source;
 
 import com.amazonaws.regions.Regions;
-import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigException;
 
 import java.util.Arrays;
@@ -25,41 +24,56 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-class TaskConfig extends AbstractConfig {
+class TaskConfig {
 
     enum Keys {
         ;
 
         static String REGION = "region";
         static String ACCESS_KEY_ID = "access.key.id";
-        static String SECRET_KEY_ID = "secret.key.id";
+        static String SECRET_KEY = "secret.key";
         static String TOPIC_FORMAT = "topic.format";
         static String SHARDS = "shards";
         static String TABLE = "table";
         static String STREAM_ARN = "stream.arn";
     }
 
+    private final Map<String, String> props;
+
     final Regions region;
     final String accessKeyId;
-    final String secretKeyId;
+    final String secretKey;
     final String topicFormat;
     final List<String> shards;
 
     TaskConfig(Map<String, String> props) {
-        super((Map) props);
-        region = Regions.fromName(getString(Keys.REGION));
-        accessKeyId = props.getOrDefault(Keys.ACCESS_KEY_ID, "");
-        secretKeyId = props.getOrDefault(Keys.SECRET_KEY_ID, "");
-        topicFormat = getString(Keys.TOPIC_FORMAT);
-        shards = Arrays.stream(getString(Keys.SHARDS).split(",")).filter(shardId -> !shardId.isEmpty()).collect(Collectors.toList());
+        this.props = props;
+
+        region = Regions.fromName(getConfig(Keys.REGION));
+        accessKeyId = getConfig(Keys.ACCESS_KEY_ID, "");
+        secretKey = getConfig(Keys.SECRET_KEY, "");
+        topicFormat = getConfig(Keys.TOPIC_FORMAT);
+        shards = Arrays.stream(getConfig(Keys.SHARDS).split(",")).filter(shardId -> !shardId.isEmpty()).collect(Collectors.toList());
     }
 
     String tableForShard(String shardId) {
-        return getString(shardId + "." + Keys.TABLE);
+        return getConfig(shardId + "." + Keys.TABLE);
     }
 
     String streamArnForShard(String shardId) {
-        return getString(shardId + "." + Keys.STREAM_ARN);
+        return getConfig(shardId + "." + Keys.STREAM_ARN);
+    }
+
+    private String getConfig(String key) {
+        final String value = props.get(key);
+        if (value == null) {
+            throw new ConfigException(key, "Missing task configuration");
+        }
+        return value;
+    }
+
+    private String getConfig(String key, String defaultValue) {
+        return props.getOrDefault(key, defaultValue);
     }
 
 }

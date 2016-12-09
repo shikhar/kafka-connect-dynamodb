@@ -16,8 +16,8 @@
 
 package dynamok.source;
 
-import com.amazonaws.auth.AWSCredentials;
 import com.amazonaws.auth.BasicAWSCredentials;
+import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreamsClient;
 import com.amazonaws.services.dynamodbv2.model.DescribeStreamRequest;
@@ -80,12 +80,12 @@ public class DynamoDbSourceConnector extends SourceConnector {
         final AmazonDynamoDBClient client;
         final AmazonDynamoDBStreamsClient streamsClient;
 
-        if (config.accessKeyId.value().isEmpty()  ||  config.secretKeyId.value().isEmpty()) {
-            client = new AmazonDynamoDBClient();
-            streamsClient = new AmazonDynamoDBStreamsClient();
-            log.debug("AmazonDynamoDB clients created with default credentials");
+        if (config.accessKeyId.value().isEmpty() || config.secretKey.value().isEmpty()) {
+            client = new AmazonDynamoDBClient(DefaultAWSCredentialsProviderChain.getInstance());
+            streamsClient = new AmazonDynamoDBStreamsClient(DefaultAWSCredentialsProviderChain.getInstance());
+            log.debug("AmazonDynamoDBStreamsClient created with DefaultAWSCredentialsProviderChain");
         } else {
-            BasicAWSCredentials awsCreds = new BasicAWSCredentials(config.accessKeyId.value(), config.secretKeyId.value());
+            final BasicAWSCredentials awsCreds = new BasicAWSCredentials(config.accessKeyId.value(), config.secretKey.value());
             client = new AmazonDynamoDBClient(awsCreds);
             streamsClient = new AmazonDynamoDBStreamsClient(awsCreds);
             log.debug("AmazonDynamoDB clients created with AWS credentials from connector configuration");

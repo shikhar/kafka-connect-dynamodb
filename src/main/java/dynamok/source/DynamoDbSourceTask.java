@@ -16,9 +16,8 @@
 
 package dynamok.source;
 
-import com.amazonaws.auth.AWSCredentials;
 import com.amazonaws.auth.BasicAWSCredentials;
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreamsClient;
+import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreamsClient;
 import com.amazonaws.services.dynamodbv2.model.GetRecordsRequest;
 import com.amazonaws.services.dynamodbv2.model.GetRecordsResult;
@@ -61,11 +60,11 @@ public class DynamoDbSourceTask extends SourceTask {
     public void start(Map<String, String> props) {
         config = new TaskConfig(props);
 
-        if (config.accessKeyId.toString().isEmpty()  ||  config.secretKeyId.toString().isEmpty()) {
-            streamsClient = new AmazonDynamoDBStreamsClient();
-            log.debug("AmazonDynamoDBStreamsClient created with default credentials");
+        if (config.accessKeyId.isEmpty() || config.secretKey.isEmpty()) {
+            streamsClient = new AmazonDynamoDBStreamsClient(DefaultAWSCredentialsProviderChain.getInstance());
+            log.debug("AmazonDynamoDBStreamsClient created with DefaultAWSCredentialsProviderChain");
         } else {
-            BasicAWSCredentials awsCreds = new BasicAWSCredentials(config.accessKeyId.toString(), config.secretKeyId.toString());
+            final BasicAWSCredentials awsCreds = new BasicAWSCredentials(config.accessKeyId, config.secretKey);
             streamsClient = new AmazonDynamoDBStreamsClient(awsCreds);
             log.debug("AmazonDynamoDBStreamsClient created with AWS credentials from connector configuration");
         }

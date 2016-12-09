@@ -90,11 +90,25 @@ Configuration options
 ---------------------
 
 ``region``
-  AWS region for the source DynamoDB.
+  AWS region for DynamoDB.
 
   * Type: string
   * Default: ""
   * Importance: high
+
+``access.key.id``
+  Explicit AWS access key ID. Leave empty to utilize the default credential provider chain.
+
+  * Type: password
+  * Default: [hidden]
+  * Importance: low
+
+``secret.key``
+  Explicit AWS secret access key. Leave empty to utilize the default credential provider chain.
+
+  * Type: password
+  * Default: [hidden]
+  * Importance: low
 
 ``batch.size``
   Batch size between 1 (dedicated ``PutItemRequest`` for each record) and 25 (which is the maximum number of items in a ``BatchWriteItemRequest``)
@@ -186,11 +200,25 @@ Configuration options
 ---------------------
 
 ``region``
-  AWS region for the source DynamoDB.
+  AWS region for DynamoDB.
 
   * Type: string
   * Default: ""
   * Importance: high
+
+``access.key.id``
+  Explicit AWS access key ID. Leave empty to utilize the default credential provider chain.
+
+  * Type: password
+  * Default: [hidden]
+  * Importance: low
+
+``secret.key``
+  Explicit AWS secret access key. Leave empty to utilize the default credential provider chain.
+
+  * Type: password
+  * Default: [hidden]
+  * Importance: low
 
 ``topic.format``
   Format string for destination Kafka topic, use ``${table}`` as placeholder for source table name.
