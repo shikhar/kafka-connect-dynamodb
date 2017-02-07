@@ -19,14 +19,7 @@ package dynamok.sink;
 import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
-import com.amazonaws.services.dynamodbv2.model.AmazonDynamoDBException;
-import com.amazonaws.services.dynamodbv2.model.AttributeValue;
-import com.amazonaws.services.dynamodbv2.model.BatchWriteItemRequest;
-import com.amazonaws.services.dynamodbv2.model.BatchWriteItemResult;
-import com.amazonaws.services.dynamodbv2.model.LimitExceededException;
-import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughputExceededException;
-import com.amazonaws.services.dynamodbv2.model.PutRequest;
-import com.amazonaws.services.dynamodbv2.model.WriteRequest;
+import com.amazonaws.services.dynamodbv2.model.*;
 import dynamok.Version;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
@@ -94,19 +87,11 @@ public class DynamoDbSinkTask extends SinkTask {
         if (records.isEmpty()) return;
 
         try {
-            if (records.size() == 1 || config.batchSize == 1) {
-                for (final SinkRecord record : records) {
-                    client.putItem(tableName(record), toPutRequest(record).getItem());
-                }
-            } else {
-                final Iterator<SinkRecord> recordIterator = records.iterator();
-                while (recordIterator.hasNext()) {
-                    final Map<String, List<WriteRequest>> writesByTable = toWritesByTable(recordIterator);
-                    final BatchWriteItemResult batchWriteResponse = client.batchWriteItem(new BatchWriteItemRequest(writesByTable));
-                    if (!batchWriteResponse.getUnprocessedItems().isEmpty()) {
-                        throw new UnprocessedItemsException(batchWriteResponse.getUnprocessedItems());
-                    }
-                }
+            if (config.useUpdates){
+                updateItems(records);
+            }
+            else {
+                putItems(records);
             }
         } catch (LimitExceededException | ProvisionedThroughputExceededException e) {
             log.debug("Write failed with Limit/Throughput Exceeded exception; backing off");
@@ -171,6 +156,84 @@ public class DynamoDbSinkTask extends SinkTask {
         } else {
             throw new ConnectException("No top attribute name configured for " + valueSource + ", and it could not be converted to Map: " + attributeValue);
         }
+    }
+
+    private void insertUpdate(ValueSource valueSource, Schema schema, Object value, UpdateItemRequest updateItem) {
+        final AttributeValue attributeValue;
+        try {
+            attributeValue = schema == null
+                    ? AttributeValueConverter.toAttributeValueSchemaless(value)
+                    : AttributeValueConverter.toAttributeValue(schema, value);
+        } catch (DataException e) {
+            log.error("Failed to convert record with schema={} value={}", schema, value, e);
+            throw e;
+        }
+
+        final String topAttributeName = valueSource.topAttributeName(config);
+        if (!topAttributeName.isEmpty()) {
+            AttributeValueUpdate attributeValueUpdate = new AttributeValueUpdate().withValue(attributeValue);
+            if (config.tableKeysNames.contains(topAttributeName)){
+                updateItem.addKeyEntry(topAttributeName,attributeValueUpdate.getValue());
+            }
+            else {
+                updateItem.addAttributeUpdatesEntry(topAttributeName, attributeValueUpdate);
+            }
+        } else if (attributeValue.getM() != null) {
+            Map<String,AttributeValue> attributeValueMap = attributeValue.getM();
+            config.tableKeysNames.forEach((k) -> {
+                if (attributeValueMap.containsKey(k)){
+                    //Remove key value from attribute value map to be updated and add it as a key
+                    updateItem.addKeyEntry(k,attributeValueMap.get(k));
+                    attributeValueMap.remove(k);
+                }
+            });
+            //Set the rest of the attributes as attributes update
+            Map<String,AttributeValueUpdate> attributeValueUpdateMap = new HashMap<>();
+            attributeValueMap.forEach((k,v) -> attributeValueUpdateMap.put(k,new AttributeValueUpdate().withValue(v)));
+            updateItem.setAttributeUpdates(attributeValueUpdateMap);
+        } else {
+            throw new ConnectException("No top attribute name configured for " + valueSource + ", and it could not be converted to Map: " + attributeValue);
+        }
+    }
+
+    private void putItems(Collection<SinkRecord> records) throws UnprocessedItemsException {
+        if (records.size() == 1 || config.batchSize == 1) {
+            for (final SinkRecord record : records) {
+                client.putItem(tableName(record), toPutRequest(record).getItem());
+            }
+        } else {
+            final Iterator<SinkRecord> recordIterator = records.iterator();
+            while (recordIterator.hasNext()) {
+                final Map<String, List<WriteRequest>> writesByTable = toWritesByTable(recordIterator);
+                final BatchWriteItemResult batchWriteResponse = client.batchWriteItem(new BatchWriteItemRequest(writesByTable));
+                if (!batchWriteResponse.getUnprocessedItems().isEmpty()) {
+                    throw new UnprocessedItemsException(batchWriteResponse.getUnprocessedItems());
+                }
+            }
+        }
+    }
+
+    private void updateItems(Collection<SinkRecord> records){
+        for (final SinkRecord record : records) {
+            client.updateItem(toUpdateItemRequest(record).withTableName(tableName(record)));
+        }
+    }
+
+
+    private UpdateItemRequest toUpdateItemRequest(SinkRecord record) {
+        final UpdateItemRequest updateItem = new UpdateItemRequest();
+        if (!config.ignoreRecordValue) {
+            insertUpdate(ValueSource.RECORD_VALUE, record.valueSchema(), record.value(), updateItem);
+        }
+        if (!config.ignoreRecordKey) {
+            insertUpdate(ValueSource.RECORD_KEY, record.keySchema(), record.key(), updateItem);
+        }
+        if (config.kafkaCoordinateNames != null) {
+            updateItem.addAttributeUpdatesEntry(config.kafkaCoordinateNames.topic, new AttributeValueUpdate().withValue(new AttributeValue().withS(record.topic())));
+            updateItem.addAttributeUpdatesEntry(config.kafkaCoordinateNames.partition, new AttributeValueUpdate().withValue(new AttributeValue().withN(String.valueOf(record.kafkaPartition()))));
+            updateItem.addAttributeUpdatesEntry(config.kafkaCoordinateNames.offset, new AttributeValueUpdate().withValue(new AttributeValue().withN(String.valueOf(record.kafkaOffset()))));
+        }
+        return updateItem;
     }
 
     private String tableName(SinkRecord record) {

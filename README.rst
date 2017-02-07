@@ -173,6 +173,20 @@ Configuration options
   * Default: 3000
   * Importance: medium
 
+``use.updates``
+  Whether to use DynamoDB update api instead of insert api.
+
+  * Type: boolean
+  * Default: false
+  * Importance: medium
+
+``table.keys.names``
+  List of ``[hash_key_name,[range_key_name]]``. Must be given when using the use.updates flag.
+
+  * Type: list
+  * Default: []
+  * Importance: medium
+
 Source Connector
 ================
 
