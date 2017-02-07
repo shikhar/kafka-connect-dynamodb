@@ -43,6 +43,8 @@ class ConnectorConfig extends AbstractConfig {
         static final String TOP_VALUE_ATTRIBUTE = "top.value.attribute";
         static final String MAX_RETRIES = "max.retries";
         static final String RETRY_BACKOFF_MS = "retry.backoff.ms";
+        static final String USE_UPDATES = "use.updates";
+        static final String TABLE_KEYS_NAMES= "table.keys.names";
     }
 
     static final ConfigDef CONFIG_DEF = new ConfigDef()
@@ -80,7 +82,15 @@ class ConnectorConfig extends AbstractConfig {
             .define(Keys.MAX_RETRIES, ConfigDef.Type.INT, 10,
                     ConfigDef.Importance.MEDIUM, "The maximum number of times to retry on errors before failing the task.")
             .define(Keys.RETRY_BACKOFF_MS, ConfigDef.Type.INT, 3000,
-                    ConfigDef.Importance.MEDIUM, "The time in milliseconds to wait following an error before a retry attempt is made.");
+                    ConfigDef.Importance.MEDIUM, "The time in milliseconds to wait following an error before a retry attempt is made.")
+            .define(Keys.USE_UPDATES, ConfigDef.Type.BOOLEAN, false,
+                    ConfigDef.Importance.MEDIUM, "Whether to use DynamoDB update api instead of insert api.")
+            .define(Keys.TABLE_KEYS_NAMES, ConfigDef.Type.LIST, "", (key, names) -> {
+                final List namesList = (List) names;
+                if (!namesList.isEmpty() && namesList.size() > 2)
+                    throw new ConfigException(Keys.TABLE_KEYS_NAMES,
+                            "Must be empty or contain up to 2 attribute names mapping to hash key and (optionally) range key, but was: " + namesList);
+            }, ConfigDef.Importance.MEDIUM, "List of ``[hash_key_name,[range_key_name]]``. Must be given when using the "+Keys.USE_UPDATES+" flag.");
 
     final Regions region;
     final Password accessKeyId;
@@ -94,6 +104,8 @@ class ConnectorConfig extends AbstractConfig {
     final String topValueAttribute;
     final int maxRetries;
     final int retryBackoffMs;
+    final boolean useUpdates;
+    final List<String> tableKeysNames;
 
     ConnectorConfig(ConfigDef config, Map<String, String> parsedConfig) {
         super(config, parsedConfig);
@@ -109,6 +121,8 @@ class ConnectorConfig extends AbstractConfig {
         topValueAttribute = getString(Keys.TOP_VALUE_ATTRIBUTE);
         maxRetries = getInt(Keys.MAX_RETRIES);
         retryBackoffMs = getInt(Keys.RETRY_BACKOFF_MS);
+        useUpdates = getBoolean(Keys.USE_UPDATES);
+        tableKeysNames = getList(Keys.TABLE_KEYS_NAMES);
     }
 
     ConnectorConfig(Map<String, String> props) {
