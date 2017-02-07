@@ -176,7 +176,6 @@ public class DynamoDbSinkTask extends SinkTask {
                 updateItem.addKeyEntry(topAttributeName,attributeValueUpdate.getValue());
             }
             else {
-                log.info("tableKeysNames {} does not contain topAttributeName {}",config.tableKeysNames,topAttributeName);
                 updateItem.addAttributeUpdatesEntry(topAttributeName, attributeValueUpdate);
             }
         } else if (attributeValue.getM() != null) {
