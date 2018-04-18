@@ -89,6 +89,19 @@ public class DynamoDbSinkTask extends SinkTask {
         remainingRetries = config.maxRetries;
     }
 
+    private void attemptPutItem(SinkRecord record) {
+        try {
+            client.putItem(tableName(record), toPutRequest(record).getItem());
+        } catch (AmazonDynamoDBException e) {
+            if(e.getErrorCode().equals("ValidationError")
+                    && e.getErrorMessage().contains("Item size has exceeded the maximum allowed size")) {
+                log.error("Caught item size has exceeded the maximum allowed size exception, item: " + record);
+            } else {
+                throw e;
+            }
+        }
+    }
+
     @Override
     public void put(Collection<SinkRecord> records) {
         if (records.isEmpty()) return;
@@ -96,7 +109,7 @@ public class DynamoDbSinkTask extends SinkTask {
         try {
             if (records.size() == 1 || config.batchSize == 1) {
                 for (final SinkRecord record : records) {
-                    client.putItem(tableName(record), toPutRequest(record).getItem());
+                    attemptPutItem(record);
                 }
             } else {
                 final Iterator<SinkRecord> recordIterator = records.iterator();
