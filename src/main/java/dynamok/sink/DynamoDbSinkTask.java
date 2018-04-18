@@ -96,6 +96,8 @@ public class DynamoDbSinkTask extends SinkTask {
             if(e.getErrorCode().equals("ValidationError")
                     && e.getErrorMessage().contains("Item size has exceeded the maximum allowed size")) {
                 log.error("Caught item size has exceeded the maximum allowed size exception, item: " + record);
+            } else {
+                throw e;
             }
         }
     }
