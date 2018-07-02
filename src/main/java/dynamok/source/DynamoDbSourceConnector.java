@@ -68,6 +68,7 @@ public class DynamoDbSourceConnector extends SourceConnector {
                 taskConfig.put(shard.getShardId() + "." + TaskConfig.Keys.TABLE, tableDesc.getTableName());
                 taskConfig.put(shard.getShardId() + "." + TaskConfig.Keys.STREAM_ARN, tableDesc.getLatestStreamArn());
             });
+            taskConfig.put(TaskConfig.Keys.LOG_RECORD_STREAM, config.isRecordStreamLogOn);
             return taskConfig;
         }).collect(Collectors.toList());
     }

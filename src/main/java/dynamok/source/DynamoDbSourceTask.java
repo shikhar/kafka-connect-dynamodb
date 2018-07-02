@@ -19,11 +19,7 @@ package dynamok.source;
 import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreamsClient;
-import com.amazonaws.services.dynamodbv2.model.GetRecordsRequest;
-import com.amazonaws.services.dynamodbv2.model.GetRecordsResult;
-import com.amazonaws.services.dynamodbv2.model.GetShardIteratorRequest;
-import com.amazonaws.services.dynamodbv2.model.ShardIteratorType;
-import com.amazonaws.services.dynamodbv2.model.StreamRecord;
+import com.amazonaws.services.dynamodbv2.model.*;
 import dynamok.Version;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -46,6 +42,8 @@ public class DynamoDbSourceTask extends SourceTask {
         static final String SHARD = "shard";
         static final String SEQNUM = "seqNum";
     }
+    private static final String REMOVE = "REMOVE";
+    private static final String OPERATIONTYPE = "OperationType";
 
     private final Logger log = LoggerFactory.getLogger(getClass());
 
@@ -106,20 +104,37 @@ public class DynamoDbSourceTask extends SourceTask {
         final String topic = config.topicFormat.replace("${table}", tableName);
         final Map<String, String> sourcePartition = sourcePartition(shardId);
 
-        return rsp.getRecords().stream()
-                .map(dynamoRecord -> toSourceRecord(sourcePartition, topic, dynamoRecord.getDynamodb()))
-                .collect(Collectors.toList());
+        try {
+            return rsp.getRecords().stream()
+                    .map(dynamoRecord -> toSourceRecord(sourcePartition, topic, dynamoRecord))
+                    .collect(Collectors.toList());
+        }
+
+        catch (Exception exception) {
+            log.error("Failed to stream data into Kafka {}", exception.toString());
+            return null;
+        }
     }
 
-    private SourceRecord toSourceRecord(Map<String, String> sourcePartition, String topic, StreamRecord dynamoRecord) {
-        return new SourceRecord(
-                sourcePartition,
-                Collections.singletonMap(Keys.SEQNUM, dynamoRecord.getSequenceNumber()),
-                topic, null,
-                RecordMapper.attributesSchema(), RecordMapper.toConnect(dynamoRecord.getKeys()),
-                RecordMapper.attributesSchema(), RecordMapper.toConnect(dynamoRecord.getNewImage()),
-                dynamoRecord.getApproximateCreationDateTime().getTime()
-        );
+    private SourceRecord toSourceRecord(Map<String, String> sourcePartition, String topic, Record record) {
+        StreamRecord dynamoRecord = record.getDynamodb();
+        log.info(config.isRecordStreamLogOn.toString());
+       if(config.isRecordStreamLogOn) {
+           log.info(record.toString());
+       }
+
+        Map<String, AttributeValue> keyAttributeMap = dynamoRecord.getKeys();
+        keyAttributeMap.put(OPERATIONTYPE,new AttributeValue().withS(record.getEventName()) );
+        Map<String, AttributeValue> valueAttributeMap =  record.getEventName().equals(REMOVE)? new HashMap<>() :dynamoRecord.getNewImage();
+            return new SourceRecord(
+                    sourcePartition,
+                    Collections.singletonMap(Keys.SEQNUM, dynamoRecord.getSequenceNumber()),
+                    topic, null,
+                    RecordMapper.attributesSchema(), RecordMapper.toConnect(keyAttributeMap),
+                    RecordMapper.attributesSchema(), RecordMapper.toConnect(valueAttributeMap),
+                    dynamoRecord.getApproximateCreationDateTime().getTime()
+            );
+
     }
 
     private String shardIterator(String shardId) {
