@@ -27,6 +27,8 @@ import com.amazonaws.services.dynamodbv2.model.LimitExceededException;
 import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughputExceededException;
 import com.amazonaws.services.dynamodbv2.model.PutRequest;
 import com.amazonaws.services.dynamodbv2.model.WriteRequest;
+import com.amazonaws.util.StringUtils;
+
 import dynamok.Version;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
@@ -86,6 +88,10 @@ public class DynamoDbSinkTask extends SinkTask {
         }
 
         client.configureRegion(config.region);
+        if(!StringUtils.isNullOrEmpty(config.endPointUrl)) {
+        	client.setEndpoint(config.endPointUrl);
+        	client.setSignerRegionOverride("local");
+        }
         remainingRetries = config.maxRetries;
     }
 
