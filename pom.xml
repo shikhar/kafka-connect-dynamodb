@@ -120,12 +120,12 @@
         <repository>
             <id>artifactory</id>
             <name>spark-releases</name>
-            <url>http://artifactory.bi.letgo.aws/artifactory/spark-release-local</url>
+            <url>http://internal-pro-repo-artifactory-alb-int-1312206971.us-east-1.elb.amazonaws.com/artifactory/spark-release-local</url>
         </repository>
         <snapshotRepository>
             <id>artifactory-snapshots</id>
             <name>spark-snapshots</name>
-            <url>http://artifactory.bi.letgo.aws/artifactory/spark-release-local</url>
+            <url>http://internal-pro-repo-artifactory-alb-int-1312206971.us-east-1.elb.amazonaws.com/artifactory/spark-release-local</url>
         </snapshotRepository>
     </distributionManagement>
 
