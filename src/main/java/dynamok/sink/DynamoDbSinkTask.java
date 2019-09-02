@@ -19,18 +19,12 @@ package dynamok.sink;
 import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
-import com.amazonaws.services.dynamodbv2.model.AmazonDynamoDBException;
-import com.amazonaws.services.dynamodbv2.model.AttributeValue;
-import com.amazonaws.services.dynamodbv2.model.BatchWriteItemRequest;
-import com.amazonaws.services.dynamodbv2.model.BatchWriteItemResult;
-import com.amazonaws.services.dynamodbv2.model.LimitExceededException;
-import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughputExceededException;
-import com.amazonaws.services.dynamodbv2.model.PutRequest;
-import com.amazonaws.services.dynamodbv2.model.WriteRequest;
+import com.amazonaws.services.dynamodbv2.model.*;
 import dynamok.Version;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.errors.RetriableException;
@@ -39,15 +33,17 @@ import org.apache.kafka.connect.sink.SinkTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 
 public class DynamoDbSinkTask extends SinkTask {
+
+    private static final String FIELD_ID = "de_record_key";
+    private static final String FIELD_VERSION = "de_record_version";
+    private static final String VERSION_VALUE_EXPRESSION = ":version_val";
+
+    private static final String ITEM_NOT_EXISTS_CONDITION = String.format("attribute_not_exists(%s)", FIELD_ID);
+    private static final String NEWER_VERSION_CONDITION = String.format("%s < %s", FIELD_VERSION, VERSION_VALUE_EXPRESSION);
 
     private enum ValueSource {
         RECORD_KEY {
@@ -96,7 +92,17 @@ public class DynamoDbSinkTask extends SinkTask {
         try {
             if (records.size() == 1 || config.batchSize == 1) {
                 for (final SinkRecord record : records) {
-                    client.putItem(tableName(record), toPutRequest(record).getItem());
+                    Object version = ((Struct) record.value()).get(FIELD_VERSION);
+                    log.debug("Record version: {}", version.toString());
+
+                    // TODO Ofir - decouple the logic of the conditions to a different component
+                    PutItemRequest putItemRequest = new PutItemRequest(tableName(record), toPutRequest(record).getItem());
+                    putItemRequest.setConditionExpression(String.format("%s OR %s", ITEM_NOT_EXISTS_CONDITION, NEWER_VERSION_CONDITION));
+                    putItemRequest.setExpressionAttributeValues(Collections.unmodifiableMap(new HashMap<String, AttributeValue>() {{
+                        put(VERSION_VALUE_EXPRESSION, new AttributeValue().withN(version.toString()));
+                    }}));
+
+                    client.putItem(putItemRequest);
                 }
             } else {
                 final Iterator<SinkRecord> recordIterator = records.iterator();
@@ -108,6 +114,8 @@ public class DynamoDbSinkTask extends SinkTask {
                     }
                 }
             }
+        } catch (ConditionalCheckFailedException e) {
+            log.info("A newer version exists, skipping this update");
         } catch (LimitExceededException | ProvisionedThroughputExceededException e) {
             log.debug("Write failed with Limit/Throughput Exceeded exception; backing off");
             context.timeout(config.retryBackoffMs);
